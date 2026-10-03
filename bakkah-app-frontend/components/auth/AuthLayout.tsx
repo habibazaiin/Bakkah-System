@@ -3,8 +3,8 @@
 import { ReactNode } from 'react';
 
 interface AuthLayoutProps {
-    title: string;
-    subtitle: string;
+    title: ReactNode;      // تعديل هنا
+    subtitle: ReactNode;   // وتعديل هنا
     children: ReactNode;
 }
 
@@ -18,14 +18,14 @@ export default function AuthLayout({ title, subtitle, children }: AuthLayoutProp
 
                 <div className="relative z-10 flex flex-col items-start transform transition-all duration-700 hover:scale-105">
                     <div className="mb-8 p-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-xl">
-                       <span className="text-3xl font-black text-white tracking-widest">BAKKAH</span>
+                        <span className="text-3xl font-black text-white tracking-widest">BAKKAH SYSTEMS</span>
                     </div>
-                    <h1 className="text-6xl font-extrabold mb-6 tracking-tight text-white leading-tight">
-                        Elevate Your <br />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-[#F8FAFC]/70">Workflow.</span>
+                    <h1 className="text-5xl lg:text-6xl font-extrabold mb-6 tracking-tight text-white leading-tight">
+                        Where Innovation Meets <br />
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-[#F8FAFC]/70">Craftsmanship.</span>
                     </h1>
                     <p className="text-lg text-white/80 max-w-md leading-relaxed font-medium">
-                        Streamline your projects, manage risks effectively, and get highly accurate ML/DL estimations in one unified platform.
+                        Your unified platform for cutting-edge technology solutions, AI integrations, and bespoke furniture designs tailored for modern spaces.
                     </p>
                 </div>
             </div>

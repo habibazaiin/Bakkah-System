@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image'; // أضفنا الـ Image component
 import AuthLayout from '@/components/auth/AuthLayout';
 import SignUpForm from '@/components/auth/SignUpForm';
 import OtpForm from '@/components/auth/OtpForm';
@@ -22,7 +23,7 @@ export default function SignUpPage() {
             setSavedData(data);
             setSuccessMsg('Verification code has been sent to your email.');
             setStep('otp');
-        } catch (error: any) { setErrorMsg(error.message); } 
+        } catch (error: any) { setErrorMsg(error.message); }
         finally { setLoading(false); }
     };
 
@@ -36,13 +37,28 @@ export default function SignUpPage() {
             });
             setSuccessMsg('Account verified successfully! Redirecting...');
             setTimeout(() => { window.location.href = savedData.role === 'admin' ? '/admin/dashboard' : '/dashboard'; }, 1500);
-        } catch (error: any) { setErrorMsg(error.message); } 
+        } catch (error: any) { setErrorMsg(error.message); }
         finally { setLoading(false); }
     };
 
     return (
-        <AuthLayout 
-            title={step === 'signup' ? 'Create an Account' : 'Verify Your Email'} 
+        <AuthLayout
+            title={
+                step === 'signup' ? (
+                    <span className="flex items-center justify-center gap-3">
+                        <Image
+                            src="/logo.png"
+                            alt="Bakkah Logo"
+                            width={32}
+                            height={32}
+                            className="object-contain"
+                        />
+                        Create an Account
+                    </span>
+                ) : (
+                    'Verify Your Email'
+                )
+            }
             subtitle={step === 'signup' ? 'Enter your details below to get started' : `Enter the 6-digit code sent to ${savedData?.email}`}
         >
             <AlertMessage type="error" message={errorMsg} />

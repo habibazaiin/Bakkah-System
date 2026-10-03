@@ -9,6 +9,7 @@ import InputField from '@/components/ui/InputField';
 import AlertMessage from '@/components/ui/AlertMessage';
 import { AuthService } from '@/services/auth.service';
 import { SignInFormData } from '@/types/auth.types';
+import Image from 'next/image';
 
 type FlowStep = 'signin' | 'request-email' | 'otp' | 'reset-password';
 
@@ -109,7 +110,21 @@ export default function SignInPage() {
     const getTitleAndSubtitle = () => {
         switch (step) {
             case 'signin':
-                return { title: 'Welcome Back', subtitle: 'Enter your credentials to access your account' };
+                return {
+                    title: (
+                        <span className="flex items-center justify-center gap-3">
+                            <Image
+                                src="/logo.png"
+                                alt="Bakkah Logo"
+                                width={32}
+                                height={32}
+                                className="object-contain"
+                            />
+                            Welcome Back
+                        </span>
+                    ),
+                    subtitle: 'Enter your credentials to access your account'
+                };
             case 'request-email':
                 return { title: 'Reset Password', subtitle: 'Enter your email to receive a verification code' };
             case 'otp':
@@ -118,7 +133,6 @@ export default function SignInPage() {
                 return { title: 'Set New Password', subtitle: 'Please enter a strong new password' };
         }
     };
-
     const { title, subtitle } = getTitleAndSubtitle();
 
     return (
