@@ -3,35 +3,53 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { PmpService } from '@/services/pmp.service';
 import CreateSpaceModal from '@/components/pmp/CreateSpaceModal';
+import CreateProjectModal from '@/components/pmp/CreateProjectModal';
 
-// الأيقونات الاحترافية من Lucide
-import { LayoutDashboard, FolderKanban, Bell, Settings, Plus, Search, Layers, Loader2 } from 'lucide-react';
+// أيقونات Lucide
+import { LayoutDashboard, FolderKanban, Bell, Settings, Plus, Search, Layers, Loader2, ChevronRight, ChevronDown, Briefcase } from 'lucide-react';
 
 export default function PmpLayout({ children }: { children: React.ReactNode }) {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [isAuthLoading, setIsAuthLoading] = useState(true);
 
+    // داتا السايد بار
     const [spaces, setSpaces] = useState<any[]>([]);
-    const [isLoadingSpaces, setIsLoadingSpaces] = useState(false);
+    const [projects, setProjects] = useState<any[]>([]);
+    const [isLoadingData, setIsLoadingData] = useState(false);
 
-    // حالة للتحكم في المودال
-    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    // حالة الـ Accordion (إيه الـ Space اللي مفتوح دلوقتي)
+    const [expandedSpaces, setExpandedSpaces] = useState<Record<string, boolean>>({});
+
+    // حالات المودال
+    const [isCreateSpaceModalOpen, setIsCreateSpaceModalOpen] = useState(false);
+    const [spaceIdForNewProject, setSpaceIdForNewProject] = useState<string | null>(null);
 
     const router = useRouter();
+    const pathname = usePathname();
 
-    const fetchSpaces = async () => {
-        setIsLoadingSpaces(true);
+    // جلب الداتا (Spaces + Projects) مع بعض عشان السرعة
+    const fetchData = async () => {
+        setIsLoadingData(true);
         try {
-            const fetchedSpaces = await PmpService.getSpaces();
+            const [fetchedSpaces, fetchedProjects] = await Promise.all([
+                PmpService.getSpaces(),
+                PmpService.getProjects()
+            ]);
             setSpaces(fetchedSpaces);
+            setProjects(fetchedProjects);
+
+            // فتح أول Space تلقائياً لو موجود
+            if (fetchedSpaces.length > 0 && Object.keys(expandedSpaces).length === 0) {
+                setExpandedSpaces({ [fetchedSpaces[0].id]: true });
+            }
         } catch (error) {
-            console.error("Error fetching spaces:", error);
+            console.error("Error fetching data:", error);
         } finally {
-            setIsLoadingSpaces(false);
+            setIsLoadingData(false);
         }
     };
 
@@ -42,11 +60,17 @@ export default function PmpLayout({ children }: { children: React.ReactNode }) {
                 router.push('/signin?redirect=/pmp');
             } else {
                 setIsAuthLoading(false);
-                fetchSpaces();
+                fetchData();
             }
         };
         checkAuthAndFetchData();
     }, [router]);
+
+    // دالة لفتح وقفل الـ Space
+    const toggleSpace = (id: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setExpandedSpaces(prev => ({ ...prev, [id]: !prev[id] }));
+    };
 
     if (isAuthLoading) {
         return (
@@ -62,19 +86,18 @@ export default function PmpLayout({ children }: { children: React.ReactNode }) {
     return (
         <div className="flex h-screen bg-[#F8FAFC] overflow-hidden font-sans text-[#1F2937] selection:bg-[#1E5A7A] selection:text-white">
 
-            {/* Primary Sidebar - Minimal & Clean */}
+            {/* Primary Sidebar */}
             <aside className="w-20 bg-[#12394D] flex flex-col items-center py-6 border-r border-[#1E5A7A]/30 shrink-0 z-20 shadow-2xl relative">
                 <Link href="/" className="mb-8 transform transition-transform hover:scale-110" title="Company Home">
                     <Image src="/logo.png" alt="Bakkah" width={36} height={36} className="object-contain" />
                 </Link>
 
                 <nav className="flex flex-col gap-4 w-full items-center mt-4">
-                    {/* Active Icon Example */}
-                    <button className="p-3 bg-white/10 text-white rounded-2xl shadow-sm transition-all duration-300" title="Dashboard">
+                    <Link href="/pmp" className={`p-3 rounded-2xl shadow-sm transition-all duration-300 ${pathname === '/pmp' ? 'bg-white/10 text-white' : 'text-white/50 hover:bg-white/5 hover:text-white'}`} title="Dashboard">
                         <LayoutDashboard size={22} strokeWidth={2} />
-                    </button>
+                    </Link>
 
-                    <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-3 text-white/50 hover:bg-white/5 hover:text-white rounded-2xl transition-all duration-300" title="Workspaces">
+                    <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className={`p-3 rounded-2xl transition-all duration-300 ${isSidebarOpen ? 'bg-white/10 text-white' : 'text-white/50 hover:bg-white/5 hover:text-white'}`} title="Workspaces">
                         <FolderKanban size={22} strokeWidth={2} />
                     </button>
 
@@ -94,12 +117,12 @@ export default function PmpLayout({ children }: { children: React.ReactNode }) {
                 </div>
             </aside>
 
-            {/* Secondary Sidebar - Workspaces */}
+            {/* Secondary Sidebar - Workspaces & Projects */}
             <aside className={`bg-white border-r border-gray-200 flex flex-col shrink-0 transition-all duration-300 ease-in-out ${isSidebarOpen ? 'w-64 translate-x-0' : 'w-0 -translate-x-full opacity-0 overflow-hidden'}`}>
                 <div className="p-6 border-b border-gray-100 flex items-center justify-between">
                     <h2 className="text-sm font-black text-[#1E5A7A] uppercase tracking-wider">Workspaces</h2>
                     <button
-                        onClick={() => setIsCreateModalOpen(true)}
+                        onClick={() => setIsCreateSpaceModalOpen(true)}
                         className="text-gray-400 hover:text-[#B03052] hover:bg-red-50 p-1.5 rounded-lg transition-colors"
                         title="New Space"
                     >
@@ -107,26 +130,75 @@ export default function PmpLayout({ children }: { children: React.ReactNode }) {
                     </button>
                 </div>
 
-                <div className="p-4 flex-1 overflow-y-auto space-y-1">
-                    {isLoadingSpaces ? (
+                <div className="p-4 flex-1 overflow-y-auto">
+                    {isLoadingData ? (
                         <div className="flex justify-center p-8">
                             <Loader2 className="w-6 h-6 text-[#1E5A7A] animate-spin" />
                         </div>
                     ) : spaces.length === 0 ? (
-                        <div className="text-center p-6 text-sm text-gray-400 font-medium bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                        <div className="text-center p-6 text-sm text-gray-400 font-medium bg-gray-50 rounded-2xl border border-dashed border-gray-200 mt-2">
                             No spaces yet.<br />Click + to create one.
                         </div>
                     ) : (
-                        spaces.map((space) => (
-                            <div key={space.id} className="px-3 py-2.5 rounded-xl hover:bg-[#F8FAFC] transition-all cursor-pointer group flex items-center gap-3 border border-transparent hover:border-gray-100">
-                                <div className="w-8 h-8 rounded-lg bg-gray-100 text-gray-500 group-hover:bg-[#1E5A7A]/10 group-hover:text-[#1E5A7A] flex items-center justify-center transition-colors">
-                                    <Layers size={16} strokeWidth={2.5} />
-                                </div>
-                                <span className="font-bold text-sm text-gray-600 group-hover:text-[#1E5A7A] transition-colors truncate">
-                                    {space.name}
-                                </span>
-                            </div>
-                        ))
+                        <div className="space-y-3">
+                            {spaces.map((space) => {
+                                const spaceProjects = projects.filter(p => p.space_id === space.id);
+                                const isExpanded = expandedSpaces[space.id];
+
+                                return (
+                                    <div key={space.id} className="animate-fade-in-up">
+                                        {/* Space Header */}
+                                        <div
+                                            onClick={(e) => toggleSpace(space.id, e)}
+                                            className={`flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer group transition-all border ${isExpanded ? 'bg-[#F8FAFC] border-gray-100' : 'border-transparent hover:bg-gray-50'}`}
+                                        >
+                                            <div className="flex items-center gap-3 overflow-hidden">
+                                                <div className="text-gray-400 group-hover:text-[#1E5A7A] transition-colors">
+                                                    {isExpanded ? <ChevronDown size={16} strokeWidth={2.5} /> : <ChevronRight size={16} strokeWidth={2.5} />}
+                                                </div>
+                                                <div className="w-7 h-7 rounded-lg bg-white shadow-sm border border-gray-100 text-[#1E5A7A] flex items-center justify-center shrink-0">
+                                                    <Layers size={14} strokeWidth={2.5} />
+                                                </div>
+                                                <span className="font-bold text-sm text-gray-700 group-hover:text-[#1E5A7A] transition-colors truncate">
+                                                    {space.name}
+                                                </span>
+                                            </div>
+                                            {/* زرار إضافة مشروع للـ Space ده تحديداً */}
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); setSpaceIdForNewProject(space.id); }}
+                                                className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-[#3A7C15] p-1 rounded-md hover:bg-green-50 transition-all shrink-0"
+                                                title="Add Project"
+                                            >
+                                                <Plus size={16} strokeWidth={3} />
+                                            </button>
+                                        </div>
+
+                                        {/* Projects List تحت الـ Space */}
+                                        {isExpanded && (
+                                            <div className="ml-8 mt-1.5 pl-3 border-l-2 border-gray-100 space-y-1">
+                                                {spaceProjects.length === 0 ? (
+                                                    <div className="text-xs text-gray-400 font-medium py-2 px-3">No projects here.</div>
+                                                ) : (
+                                                    spaceProjects.map(project => {
+                                                        const isActive = pathname === `/pmp/projects/${project.id}`;
+                                                        return (
+                                                            <Link
+                                                                href={`/pmp/projects/${project.id}`}
+                                                                key={project.id}
+                                                                className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-bold transition-all group ${isActive ? 'bg-[#1E5A7A]/10 text-[#1E5A7A]' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}
+                                                            >
+                                                                <div className={`w-1.5 h-1.5 rounded-full transition-colors ${isActive ? 'bg-[#B03052]' : 'bg-gray-300 group-hover:bg-[#1E5A7A]'}`}></div>
+                                                                <span className="truncate">{project.name}</span>
+                                                            </Link>
+                                                        )
+                                                    })
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                )
+                            })}
+                        </div>
                     )}
                 </div>
             </aside>
@@ -161,11 +233,18 @@ export default function PmpLayout({ children }: { children: React.ReactNode }) {
                 </div>
             </main>
 
-            {/* المودال الخاص بإنشاء الـ Space */}
+            {/* Modals */}
             <CreateSpaceModal
-                isOpen={isCreateModalOpen}
-                onClose={() => setIsCreateModalOpen(false)}
-                onSpaceCreated={fetchSpaces} // هيعمل Refresh أوتوماتيك للسايد بار
+                isOpen={isCreateSpaceModalOpen}
+                onClose={() => setIsCreateSpaceModalOpen(false)}
+                onSpaceCreated={fetchData}
+            />
+
+            <CreateProjectModal
+                isOpen={!!spaceIdForNewProject}
+                onClose={() => setSpaceIdForNewProject(null)}
+                spaceId={spaceIdForNewProject || ''}
+                onProjectCreated={fetchData}
             />
         </div>
     );

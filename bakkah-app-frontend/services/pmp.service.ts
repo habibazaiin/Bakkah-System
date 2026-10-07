@@ -30,5 +30,56 @@ export const PmpService = {
         });
         if (!response.ok) throw new Error('Failed to create space');
         return response.json();
+    },
+
+    // جلب كل المشاريع
+    async getProjects() {
+        const headers = await this.getHeaders();
+        const response = await fetch(`${API_URL}/projects/`, { method: 'GET', headers });
+        if (!response.ok) throw new Error('Failed to fetch projects');
+        return response.json();
+    },
+
+    // إنشاء مشروع جديد
+    async createProject(data: { name: string; space_id: string; description?: string }) {
+        const headers = await this.getHeaders();
+        const response = await fetch(`${API_URL}/projects/`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(data)
+        });
+        if (!response.ok) throw new Error('Failed to create project');
+        return response.json();
+    },
+    // جلب مهام مشروع معين
+    async getTasks(projectId: string) {
+        const headers = await this.getHeaders();
+        const response = await fetch(`${API_URL}/tasks/${projectId}`, { method: 'GET', headers });
+        if (!response.ok) throw new Error('Failed to fetch tasks');
+        return response.json();
+    },
+
+    // إنشاء مهمة جديدة
+    async createTask(data: { title: string; project_id: string; status?: string; priority?: string }) {
+        const headers = await this.getHeaders();
+        const response = await fetch(`${API_URL}/tasks/`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(data)
+        });
+        if (!response.ok) throw new Error('Failed to create task');
+        return response.json();
+    },
+
+    // تحديث المهمة
+    async updateTask(taskId: string, data: any) {
+        const headers = await this.getHeaders();
+        const response = await fetch(`${API_URL}/tasks/${taskId}`, {
+            method: 'PATCH',
+            headers,
+            body: JSON.stringify(data)
+        });
+        if (!response.ok) throw new Error('Failed to update task');
+        return response.json();
     }
 };

@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.api.routers.pmp import spaces
-from app.api.routers.pmp import spaces, projects
+from app.api.routers.pmp import spaces, projects, tasks
 
 app = FastAPI(title=settings.PROJECT_NAME)
 
@@ -17,6 +17,7 @@ app.add_middleware(
 
 app.include_router(spaces.router, prefix="/api/pmp")
 app.include_router(projects.router, prefix="/api/pmp")
+app.include_router(tasks.router, prefix="/api/pmp")
 
 @app.get("/")
 def root():

@@ -18,3 +18,12 @@ class ProjectService:
             return response.data[0]
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))
+
+    @staticmethod
+    def get_projects(user_id: str):
+        try:
+            # هنجيب كل المشاريع الخاصة باليوزر ده
+            response = supabase.table("projects").select("*").eq("owner_id", user_id).execute()
+            return response.data
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
