@@ -15,7 +15,7 @@ export const SITE_DATA = {
         furniture: '/services/furniture',
         fullstack: '/services/fullstack',
         ai: '/services/ai',
-        pnp: '/services/pnp',
+        pmp: '/pmp',
         pdfMerger: '/services/pdf-merger',
         signIn: '/signin',
         signUp: '/signup',
@@ -49,7 +49,7 @@ export const SERVICES_LIST: ServiceItem[] = [
         category: 'Tools',
         description: 'Streamline team workflows, track milestones, and manage project tasks effortlessly with our intuitive management tool.',
         icon: '📋',
-        href: SITE_DATA.links.pnp,
+        href: SITE_DATA.links.pmp,
         badge: 'Productivity Tool',
     },
     {

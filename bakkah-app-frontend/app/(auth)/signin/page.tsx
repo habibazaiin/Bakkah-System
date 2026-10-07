@@ -31,9 +31,14 @@ export default function SignInPage() {
         resetState();
         try {
             await AuthService.signIn(data);
-            setSuccessMsg('Login successful! Redirecting to dashboard...');
+            setSuccessMsg('Login successful! Redirecting...');
+
+            // قراءة مسار التوجيه من الرابط، لو مفيش يروح للصفحة الرئيسية
+            const urlParams = new URLSearchParams(window.location.search);
+            const redirectUrl = urlParams.get('redirect') || '/';
+
             setTimeout(() => {
-                window.location.href = '/pmp';
+                window.location.href = redirectUrl;
             }, 1000);
         } catch (error: any) {
             setErrorMsg(error.message || 'Failed to sign in.');

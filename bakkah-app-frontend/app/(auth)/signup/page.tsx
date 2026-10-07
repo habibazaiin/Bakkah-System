@@ -36,7 +36,14 @@ export default function SignUpPage() {
                 username: savedData.username, phone: savedData.phone,
             });
             setSuccessMsg('Account verified successfully! Redirecting...');
-            setTimeout(() => { window.location.href = savedData.role === 'admin' ? '/admin/dashboard' : '/dashboard'; }, 1500);
+
+            // التوجيه الذكي
+            const urlParams = new URLSearchParams(window.location.search);
+            const redirectUrl = urlParams.get('redirect') || '/';
+
+            setTimeout(() => {
+                window.location.href = savedData.role === 'admin' ? '/admin' : redirectUrl;
+            }, 1500);
         } catch (error: any) { setErrorMsg(error.message); }
         finally { setLoading(false); }
     };

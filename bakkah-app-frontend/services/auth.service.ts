@@ -17,7 +17,6 @@ export const AuthService = {
         if (error) throw new Error(error.message);
 
         // الخدعة هنا: لو Supabase عمل نجاح وهمي (اليوزر موجود أصلاً)
-        // بيرجع الـ identities كمصفوفة فاضية
         if (authData.user && authData.user.identities && authData.user.identities.length === 0) {
             throw new Error('This email is already registered. Please sign in instead.');
         }
@@ -36,7 +35,6 @@ export const AuthService = {
         });
 
         if (verifyError) {
-            // تنظيف رسالة خطأ الـ OTP كمان
             if (verifyError.message.includes('Token has expired or is invalid')) {
                 throw new Error('Invalid or expired code. Please try again.');
             }
@@ -68,7 +66,6 @@ export const AuthService = {
         });
 
         if (error) {
-            // تحسين رسالة الخطأ لو البيانات غلط
             if (error.message.includes('Invalid login credentials')) {
                 throw new Error('Invalid email or password. Please try again.');
             }
@@ -81,14 +78,19 @@ export const AuthService = {
         return authData.user;
     },
 
-
-    async resetPasswordForEmail(email: string) {
-        const { error } = await supabase.auth.resetPasswordForEmail(email);
-
+    // 5. تسجيل الخروج (Sign Out) - تم إضافتها هنا
+    async signOut() {
+        const { error } = await supabase.auth.signOut();
         if (error) throw new Error(error.message);
     },
 
-    // 2. التحقق من كود الـ OTP المبعوث لإعادة التعيين
+    // 6. إرسال كود الـ OTP لنسيان كلمة المرور
+    async resetPasswordForEmail(email: string) {
+        const { error } = await supabase.auth.resetPasswordForEmail(email);
+        if (error) throw new Error(error.message);
+    },
+
+    // 7. التحقق من كود الـ OTP المبعوث لإعادة التعيين
     async verifyRecoveryOtp(email: string, token: string) {
         const { data, error } = await supabase.auth.verifyOtp({
             email,
@@ -99,7 +101,7 @@ export const AuthService = {
         return data;
     },
 
-    // 3. تحديث كلمة المرور الجديدة
+    // 8. تحديث كلمة المرور الجديدة
     async updateUserPassword(password: string) {
         const { data, error } = await supabase.auth.updateUser({
             password: password,
@@ -108,23 +110,23 @@ export const AuthService = {
         return data;
     },
 
-    // إعادة إرسال كود الـ OTP لنسيان كلمة المرور
+    // 9. إعادة إرسال كود الـ OTP لنسيان كلمة المرور
     async resendRecoveryOtp(email: string) {
         const { error } = await supabase.auth.resetPasswordForEmail(email);
         if (error) throw new Error(error.message);
     },
 
-    // تسجيل الدخول باستخدام حساب جوجل
+    // 10. تسجيل الدخول باستخدام حساب جوجل
     async signInWithGoogle() {
         const { data, error } = await supabase.auth.signInWithOAuth({
             provider: 'google',
             options: {
-                redirectTo: `${window.location.origin}/dashboard`, // التوجيه للـ Dashboard فور النجاح
+                // التوجيه للصفحة الرئيسية، والناف بار هيتعامل بذكاء مع اليوزر
+                redirectTo: `${window.location.origin}/`, 
             },
         });
 
         if (error) throw new Error(error.message);
         return data;
     },
-
 };
