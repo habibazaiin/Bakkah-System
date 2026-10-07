@@ -33,7 +33,7 @@ export default function SignInPage() {
             await AuthService.signIn(data);
             setSuccessMsg('Login successful! Redirecting to dashboard...');
             setTimeout(() => {
-                window.location.href = '/dashboard';
+                window.location.href = '/pmp';
             }, 1000);
         } catch (error: any) {
             setErrorMsg(error.message || 'Failed to sign in.');
