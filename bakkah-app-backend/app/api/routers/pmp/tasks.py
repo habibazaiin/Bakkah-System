@@ -20,3 +20,8 @@ async def update_task(task_id: str, task: TaskUpdate, current_user = Depends(get
     # تنظيف البيانات عشان نبعت القيم اللي اتغيرت بس
     update_data = {k: v for k, v in task.model_dump().items() if v is not None}
     return TaskService.update_task(task_id, update_data)
+
+@router.delete("/{task_id}")
+async def delete_task(task_id: str, current_user = Depends(get_current_user)):
+    TaskService.delete_task(task_id)
+    return {"message": "Task deleted successfully"}

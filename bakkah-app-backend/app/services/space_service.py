@@ -23,3 +23,12 @@ class SpaceService:
             return response.data
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))
+
+    @staticmethod
+    def delete_space(space_id: str):
+        try:
+            # مسح الـ Space (وبفضل الـ CASCADE في الداتابيز، كل المشاريع والمهام اللي جواه هتتمسح أوتوماتيك)
+            response = supabase.table("spaces").delete().eq("id", space_id).execute()
+            return True
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))

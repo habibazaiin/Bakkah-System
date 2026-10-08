@@ -8,14 +8,13 @@ import { supabase } from '@/lib/supabase';
 import { PmpService } from '@/services/pmp.service';
 import CreateSpaceModal from '@/components/pmp/CreateSpaceModal';
 import CreateProjectModal from '@/components/pmp/CreateProjectModal';
-
-// أيقونات Lucide
-import { LayoutDashboard, FolderKanban, Bell, Settings, Plus, Search, Layers, Loader2, ChevronRight, ChevronDown, Briefcase } from 'lucide-react';
+import { LayoutDashboard, FolderKanban, Bell, Settings, Plus, Search, Layers, Loader2, ChevronRight, ChevronDown, Briefcase, Trash2 } from 'lucide-react';
 
 export default function PmpLayout({ children }: { children: React.ReactNode }) {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [isAuthLoading, setIsAuthLoading] = useState(true);
-
+    const [spaceToDelete, setSpaceToDelete] = useState<any>(null);
+    const [isDeletingSpace, setIsDeletingSpace] = useState(false);
     // داتا السايد بار
     const [spaces, setSpaces] = useState<any[]>([]);
     const [projects, setProjects] = useState<any[]>([]);
@@ -70,6 +69,21 @@ export default function PmpLayout({ children }: { children: React.ReactNode }) {
     const toggleSpace = (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
         setExpandedSpaces(prev => ({ ...prev, [id]: !prev[id] }));
+    };
+
+    const handleDeleteSpace = async () => {
+        if (!spaceToDelete) return;
+        setIsDeletingSpace(true);
+        try {
+            await PmpService.deleteSpace(spaceToDelete.id);
+            setSpaceToDelete(null);
+            fetchData(); // Refresh Data
+            router.push('/pmp'); // التوجيه للصفحة الرئيسية في حال كان جوه مشروع اتمسح
+        } catch (error) {
+            console.error("Error deleting space:", error);
+        } finally {
+            setIsDeletingSpace(false);
+        }
     };
 
     if (isAuthLoading) {
@@ -162,15 +176,23 @@ export default function PmpLayout({ children }: { children: React.ReactNode }) {
                                                 <span className="font-bold text-sm text-gray-700 group-hover:text-[#1E5A7A] transition-colors truncate">
                                                     {space.name}
                                                 </span>
+                                            </div>{/* زراير الإضافة والحذف */}
+                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all shrink-0">
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); setSpaceIdForNewProject(space.id); }}
+                                                    className="text-gray-400 hover:text-[#3A7C15] p-1.5 rounded-md hover:bg-green-50 transition-all"
+                                                    title="Add Project"
+                                                >
+                                                    <Plus size={16} strokeWidth={3} />
+                                                </button>
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); setSpaceToDelete(space); }}
+                                                    className="text-gray-400 hover:text-[#B03052] p-1.5 rounded-md hover:bg-red-50 transition-all"
+                                                    title="Delete Space"
+                                                >
+                                                    <Trash2 size={16} strokeWidth={3} />
+                                                </button>
                                             </div>
-                                            {/* زرار إضافة مشروع للـ Space ده تحديداً */}
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); setSpaceIdForNewProject(space.id); }}
-                                                className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-[#3A7C15] p-1 rounded-md hover:bg-green-50 transition-all shrink-0"
-                                                title="Add Project"
-                                            >
-                                                <Plus size={16} strokeWidth={3} />
-                                            </button>
                                         </div>
 
                                         {/* Projects List تحت الـ Space */}
@@ -206,6 +228,7 @@ export default function PmpLayout({ children }: { children: React.ReactNode }) {
             {/* Main Content Area */}
             <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative bg-[#F8FAFC]">
                 {/* Header */}
+                {/* Header */}
                 <header className="h-20 bg-white/60 backdrop-blur-xl border-b border-gray-200 flex items-center justify-between px-8 shrink-0 sticky top-0 z-10">
                     <div className="flex items-center gap-4">
                         <h1 className="text-xl font-extrabold text-[#1F2937] tracking-tight">Overview</h1>
@@ -220,10 +243,7 @@ export default function PmpLayout({ children }: { children: React.ReactNode }) {
                                 className="bg-white border border-gray-200 text-sm rounded-full pl-10 pr-4 py-2 focus:outline-none focus:border-[#1E5A7A] focus:ring-4 focus:ring-[#1E5A7A]/10 transition-all w-64 shadow-sm"
                             />
                         </div>
-                        <button className="bg-[#1E5A7A] hover:bg-[#154560] text-white px-5 py-2 rounded-full text-sm font-bold shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5 flex items-center gap-2">
-                            <Plus size={16} strokeWidth={3} />
-                            New Task
-                        </button>
+                        {/* تم إزالة زرار Add Task من هنا بناءً على طلبك عشان النظام يكون أنظف */}
                     </div>
                 </header>
 
@@ -246,6 +266,39 @@ export default function PmpLayout({ children }: { children: React.ReactNode }) {
                 spaceId={spaceIdForNewProject || ''}
                 onProjectCreated={fetchData}
             />
+
+            {/* Modal التأكيد على مسح الـ Space */}
+            {spaceToDelete && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="fixed inset-0 bg-[#1F2937]/40 backdrop-blur-sm transition-opacity" onClick={() => setSpaceToDelete(null)} />
+                    <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 animate-fade-in-up z-10 text-center">
+                        <div className="w-16 h-16 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm border border-red-100">
+                            <Trash2 size={32} strokeWidth={2.5} />
+                        </div>
+                        <h2 className="text-2xl font-black text-[#1F2937] mb-3">Delete Workspace?</h2>
+                        <p className="text-sm text-gray-500 font-medium mb-8 leading-relaxed">
+                            Are you sure you want to delete <strong className="text-[#1F2937] px-1">{spaceToDelete.name}</strong>?
+                            <br />All projects and tasks inside it will be permanently lost.
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setSpaceToDelete(null)}
+                                disabled={isDeletingSpace}
+                                className="flex-1 px-5 py-3.5 bg-gray-50 text-gray-700 font-bold rounded-xl hover:bg-gray-100 transition-colors border border-gray-200"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleDeleteSpace}
+                                disabled={isDeletingSpace}
+                                className="flex-1 px-5 py-3.5 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-colors shadow-md flex items-center justify-center gap-2"
+                            >
+                                {isDeletingSpace ? <Loader2 size={18} className="animate-spin" /> : 'Yes, Delete'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

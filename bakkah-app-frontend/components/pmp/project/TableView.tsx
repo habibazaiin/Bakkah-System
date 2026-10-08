@@ -7,9 +7,10 @@ import { CheckCircle2, Loader2, Circle, AlertCircle, ArrowUpCircle, Plus } from 
 // --- دوال الـ UI (مفصولة لنظافة الكود) ---
 export const getStatusUI = (status: string) => {
     switch (status) {
-        case 'Done': return <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-green-50 text-green-700 border border-green-200 w-fit transition-colors"><CheckCircle2 size={14} /> Done</span>;
-        case 'In Progress': return <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 w-fit transition-colors"><Loader2 size={14} className="animate-spin" /> In Progress</span>;
-        default: return <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-gray-50 text-gray-600 border border-gray-200 w-fit transition-colors"><Circle size={14} /> To Do</span>;
+        case 'Done': return <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-green-50 text-green-700 border border-green-200 w-fit transition-colors"><CheckCircle2 size={14} /> {status}</span>;
+        case 'In Progress': return <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 w-fit transition-colors"><Loader2 size={14} className="animate-spin" /> {status}</span>;
+        case 'To Do': return <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-gray-50 text-gray-600 border border-gray-200 w-fit transition-colors"><Circle size={14} /> {status}</span>;
+        default: return <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-purple-50 text-purple-700 border border-purple-200 w-fit transition-colors"><Circle size={14} /> {status}</span>;
     }
 };
 
@@ -22,16 +23,16 @@ export const getPriorityUI = (priority: string) => {
 };
 
 // --- مكون صف المهمة (Task Row) ---
-const TaskRow = ({ task, onUpdate }: { task: any, onUpdate: (id: string, field: string, value: string) => void }) => {
+// 2. تحديث مكون الصف عشان يستقبل الـ statuses
+const TaskRow = ({ task, onUpdate, onClick, statuses }: { task: any, onUpdate: (id: string, field: string, value: string) => void, onClick: () => void, statuses: string[] }) => {
     const [isStatusOpen, setIsStatusOpen] = useState(false);
     const [isPriorityOpen, setIsPriorityOpen] = useState(false);
-
     return (
         <div className="grid grid-cols-12 gap-4 px-6 py-3.5 items-center hover:bg-gray-50 transition-colors group border-b border-gray-100 last:border-0 relative">
-            <div className="col-span-6 md:col-span-5 font-bold text-sm text-[#1F2937] group-hover:text-[#1E5A7A] transition-colors truncate pr-4">
+            <div onClick={onClick} className="col-span-6 md:col-span-5 font-bold text-sm text-[#1F2937] group-hover:text-[#1E5A7A] transition-colors truncate pr-4 cursor-pointer">
                 {task.title}
             </div>
-            
+
             <div className="col-span-3 md:col-span-3 relative">
                 <div onClick={() => setIsStatusOpen(!isStatusOpen)} className="cursor-pointer w-fit hover:opacity-80 transition-opacity">
                     {getStatusUI(task.status)}
@@ -40,7 +41,8 @@ const TaskRow = ({ task, onUpdate }: { task: any, onUpdate: (id: string, field: 
                     <>
                         <div className="fixed inset-0 z-30" onClick={() => setIsStatusOpen(false)} />
                         <div className="absolute top-full left-0 mt-2 w-40 bg-white border border-gray-100 rounded-xl shadow-xl z-50 py-1.5 animate-fade-in-up">
-                            {['To Do', 'In Progress', 'Done'].map(s => (
+                            {/* هنا خلينا القائمة تقرأ من المشروع ديناميكياً */}
+                            {statuses.map(s => (
                                 <div key={s} onClick={() => { onUpdate(task.id, 'status', s); setIsStatusOpen(false); }} className="px-3 py-2 cursor-pointer hover:bg-gray-50 flex items-center transition-colors">
                                     {getStatusUI(s)}
                                 </div>
@@ -50,6 +52,7 @@ const TaskRow = ({ task, onUpdate }: { task: any, onUpdate: (id: string, field: 
                 )}
             </div>
 
+            {/* باقي كود الـ Priority والتاريخ زي ما هو بدون تغيير */}
             <div className="col-span-3 md:col-span-2 relative">
                 <div onClick={() => setIsPriorityOpen(!isPriorityOpen)} className="cursor-pointer w-fit hover:opacity-80 transition-opacity">
                     {getPriorityUI(task.priority)}
@@ -76,7 +79,8 @@ const TaskRow = ({ task, onUpdate }: { task: any, onUpdate: (id: string, field: 
 };
 
 // --- المكون الأساسي للجدول ---
-export default function TableView({ tasks, isLoading, onUpdate, onCreate, isCreating }: any) {
+// ضفنا onTaskClick للـ Props هنا
+export default function TableView({ tasks, isLoading, onUpdate, onCreate, isCreating, onTaskClick, statuses }: any) {
     const [newTaskTitle, setNewTaskTitle] = useState('');
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -85,9 +89,7 @@ export default function TableView({ tasks, isLoading, onUpdate, onCreate, isCrea
         onCreate(newTaskTitle);
         setNewTaskTitle('');
     };
-
     return (
-        // تم إزالة overflow-hidden من هنا عشان القائمة تظهر بشكل سليم
         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 animate-fade-in-up pb-2">
             <div className="grid grid-cols-12 gap-4 px-6 py-4 border-b border-gray-100 bg-[#F8FAFC]/80 text-xs font-extrabold text-gray-500 uppercase tracking-wider rounded-t-3xl">
                 <div className="col-span-6 md:col-span-5">Task Name</div>
@@ -101,7 +103,13 @@ export default function TableView({ tasks, isLoading, onUpdate, onCreate, isCrea
             ) : (
                 <div className="flex flex-col">
                     {tasks.map((task: any) => (
-                        <TaskRow key={task.id} task={task} onUpdate={onUpdate} />
+                        <TaskRow
+                            key={task.id}
+                            task={task}
+                            onUpdate={onUpdate}
+                            onClick={() => onTaskClick(task)}
+                            statuses={statuses || ['To Do', 'In Progress', 'Done']}
+                        />
                     ))}
 
                     <form onSubmit={handleSubmit} className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-gray-50 transition-colors group mt-2">

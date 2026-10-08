@@ -14,3 +14,8 @@ async def create_space(space: SpaceCreate, current_user = Depends(get_current_us
 @router.get("/", response_model=List[SpaceResponse])
 async def get_spaces(current_user = Depends(get_current_user)):
     return SpaceService.get_spaces(str(current_user.id))
+
+@router.delete("/{space_id}")
+async def delete_space(space_id: str, current_user = Depends(get_current_user)):
+    SpaceService.delete_space(space_id)
+    return {"message": "Space deleted successfully"}

@@ -27,3 +27,13 @@ class ProjectService:
             return response.data
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))
+
+    @staticmethod
+    def update_project(project_id: str, project_data: dict):
+        try:
+            # شيلنا سطر الـ import الغلط من هنا
+            response = supabase.table("projects").update(project_data).eq("id", project_id).execute()
+            return response.data[0] if response.data else None
+        except Exception as e:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=400, detail=str(e))

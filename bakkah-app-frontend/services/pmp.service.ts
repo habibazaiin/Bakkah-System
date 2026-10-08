@@ -81,5 +81,92 @@ export const PmpService = {
         });
         if (!response.ok) throw new Error('Failed to update task');
         return response.json();
+    },
+
+    // حذف مهمة
+    async deleteTask(taskId: string) {
+        const headers = await this.getHeaders();
+        const response = await fetch(`${API_URL}/tasks/${taskId}`, { method: 'DELETE', headers });
+        if (!response.ok) throw new Error('Failed to delete task');
+        return response.json();
+    },
+
+    // مسح مساحة العمل (Space)
+    async deleteSpace(spaceId: string) {
+        const headers = await this.getHeaders();
+        const response = await fetch(`${API_URL}/spaces/${spaceId}`, { method: 'DELETE', headers });
+        if (!response.ok) throw new Error('Failed to delete space');
+        return response.json();
+    },
+
+    // تحديث المشروع (زي إضافة حالات جديدة)
+    async updateProject(projectId: string, data: any) {
+        const headers = await this.getHeaders();
+        const response = await fetch(`${API_URL}/projects/${projectId}`, {
+            method: 'PATCH',
+            headers,
+            body: JSON.stringify(data)
+        });
+        if (!response.ok) throw new Error('Failed to update project');
+        return response.json();
+    },
+
+    // جلب تعليقات المهمة
+    async getTaskComments(taskId: string) {
+        const headers = await this.getHeaders();
+        const response = await fetch(`${API_URL}/comments/${taskId}`, { headers });
+        if (!response.ok) throw new Error('Failed to fetch comments');
+        return response.json();
+    },
+
+    // إضافة تعليق جديد
+    async addComment(taskId: string, content: string) {
+        const headers = await this.getHeaders();
+        const response = await fetch(`${API_URL}/comments/`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ task_id: taskId, content })
+        });
+        if (!response.ok) throw new Error('Failed to add comment');
+        return response.json();
+    },
+
+    // جلب المرفقات
+    async getTaskAttachments(taskId: string) {
+        const headers = await this.getHeaders();
+        const response = await fetch(`${API_URL}/attachments/${taskId}`, { headers });
+        if (!response.ok) throw new Error('Failed to fetch attachments');
+        return response.json();
+    },
+
+    // رفع ملف جديد
+    // رفع ملف جديد
+    async uploadAttachment(taskId: string, file: File) {
+        // بنجيب الهيدرز بالطريقة المعتمدة في المشروع كله
+        const headers = await this.getHeaders() as Record<string, string>;
+
+        // بنحذف الـ Content-Type عشان المتصفح يظبطه لوحده (Boundary) للملفات
+        delete headers['Content-Type'];
+
+        const formData = new FormData();
+        formData.append('task_id', taskId);
+        formData.append('file', file);
+
+        const response = await fetch(`${API_URL}/attachments/`, {
+            method: 'POST',
+            headers, // كده ضامنين إن التوكن موجود 100%
+            body: formData
+        });
+
+        if (!response.ok) throw new Error('Failed to upload file');
+        return response.json();
+    },
+
+    // جلب سجل النشاطات
+    async getTaskActivities(taskId: string) {
+        const headers = await this.getHeaders();
+        const response = await fetch(`${API_URL}/activities/${taskId}`, { headers });
+        if (!response.ok) throw new Error('Failed to fetch activities');
+        return response.json();
     }
 };

@@ -20,8 +20,13 @@ class TaskResponse(TaskCreate):
     class Config:
         from_attributes = True
 
+# ضيفي ده في آخر الملف مكان الـ TaskUpdate القديم
 class TaskUpdate(BaseModel):
     title: Optional[str] = None
     status: Optional[str] = None
     priority: Optional[str] = None
     progress: Optional[float] = None
+    description: Optional[str] = None
+    start_date: Optional[date] = None
+    due_date: Optional[date] = None
+    assignee_id: Optional[str] = None  # ضفنا السطر ده

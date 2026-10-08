@@ -33,10 +33,25 @@ class TaskService:
     @staticmethod
     def update_task(task_id: str, task_data: dict):
         try:
-            from datetime import datetime
+            from datetime import datetime, date
             task_data["updated_at"] = datetime.utcnow().isoformat()
+            
+            # السطرين دول هم الحل: بيحولوا التاريخ لنص عشان الداتابيز تقبله
+            if "start_date" in task_data and isinstance(task_data["start_date"], date):
+                task_data["start_date"] = task_data["start_date"].isoformat()
+            if "due_date" in task_data and isinstance(task_data["due_date"], date):
+                task_data["due_date"] = task_data["due_date"].isoformat()
             
             response = supabase.table("tasks").update(task_data).eq("id", task_id).execute()
             return response.data[0] if response.data else None
+        except Exception as e:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=400, detail=str(e))
+
+    @staticmethod
+    def delete_task(task_id: str):
+        try:
+            response = supabase.table("tasks").delete().eq("id", task_id).execute()
+            return True
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))

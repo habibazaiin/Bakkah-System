@@ -3,6 +3,7 @@ from app.schemas.project import ProjectCreate, ProjectResponse
 from app.services.project_service import ProjectService
 from app.api.dependencies import get_current_user
 from typing import List
+from app.schemas.project import ProjectUpdate
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
 
@@ -14,3 +15,8 @@ async def create_project(project: ProjectCreate, current_user = Depends(get_curr
 @router.get("/", response_model=List[ProjectResponse])
 async def get_projects(current_user = Depends(get_current_user)):
     return ProjectService.get_projects(str(current_user.id))
+
+@router.patch("/{project_id}")
+async def update_project(project_id: str, project: ProjectUpdate, current_user = Depends(get_current_user)):
+    update_data = {k: v for k, v in project.model_dump().items() if v is not None}
+    return ProjectService.update_project(project_id, update_data)
