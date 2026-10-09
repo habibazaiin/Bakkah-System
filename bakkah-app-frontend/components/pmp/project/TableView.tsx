@@ -1,10 +1,9 @@
-// src/components/pmp/project/TableView.tsx
 'use client';
 
 import React, { useState } from 'react';
-import { CheckCircle2, Loader2, Circle, AlertCircle, ArrowUpCircle, Plus } from 'lucide-react';
+import { CheckCircle2, Loader2, Circle, AlertCircle, ArrowUpCircle, Plus, ChevronRight, ChevronDown, CornerDownRight } from 'lucide-react';
+import { Task } from '@/types/pmp.types';
 
-// --- دوال الـ UI (مفصولة لنظافة الكود) ---
 export const getStatusUI = (status: string) => {
     switch (status) {
         case 'Done': return <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-green-50 text-green-700 border border-green-200 w-fit transition-colors"><CheckCircle2 size={14} /> {status}</span>;
@@ -22,15 +21,31 @@ export const getPriorityUI = (priority: string) => {
     }
 };
 
-// --- مكون صف المهمة (Task Row) ---
-// 2. تحديث مكون الصف عشان يستقبل الـ statuses
-const TaskRow = ({ task, onUpdate, onClick, statuses }: { task: any, onUpdate: (id: string, field: string, value: string) => void, onClick: () => void, statuses: string[] }) => {
+const TaskRow = ({ task, isSubtask = false, hasSubtasks = false, isExpanded = false, onToggleExpand, onUpdate, onClick, statuses }: any) => {
     const [isStatusOpen, setIsStatusOpen] = useState(false);
     const [isPriorityOpen, setIsPriorityOpen] = useState(false);
+
+    // 🌟 التعديل هنا: رفعنا الـ z-index لما القائمة تتفتح عشان تغطي السطور اللي تحتها
+    const zIndex = isStatusOpen || isPriorityOpen ? 50 : 1;
+
     return (
-        <div className="grid grid-cols-12 gap-4 px-6 py-3.5 items-center hover:bg-gray-50 transition-colors group border-b border-gray-100 last:border-0 relative">
-            <div onClick={onClick} className="col-span-6 md:col-span-5 font-bold text-sm text-[#1F2937] group-hover:text-[#1E5A7A] transition-colors truncate pr-4 cursor-pointer">
-                {task.title}
+        <div
+            className={`grid grid-cols-12 gap-4 px-6 py-3.5 items-center hover:bg-gray-50 transition-colors group relative border-b border-gray-100 ${isSubtask ? 'bg-gray-50/50' : 'bg-white'}`}
+            style={{ zIndex }}
+        >
+            <div className="col-span-6 md:col-span-5 flex items-center gap-2 pr-4">
+                {!isSubtask && hasSubtasks && (
+                    <button onClick={onToggleExpand} className="text-gray-400 hover:text-[#1E5A7A] transition-colors p-1 rounded-md hover:bg-[#1E5A7A]/10">
+                        {isExpanded ? <ChevronDown size={16} strokeWidth={3} /> : <ChevronRight size={16} strokeWidth={3} />}
+                    </button>
+                )}
+                {!isSubtask && !hasSubtasks && <div className="w-6" />}
+
+                {isSubtask && <CornerDownRight size={16} className="text-gray-300 ml-6 mr-1" />}
+
+                <span onClick={onClick} className={`font-bold text-sm truncate cursor-pointer transition-colors ${isSubtask ? 'text-gray-600 hover:text-[#1E5A7A]' : 'text-[#1F2937] hover:text-[#1E5A7A]'}`}>
+                    {task.title}
+                </span>
             </div>
 
             <div className="col-span-3 md:col-span-3 relative">
@@ -41,8 +56,7 @@ const TaskRow = ({ task, onUpdate, onClick, statuses }: { task: any, onUpdate: (
                     <>
                         <div className="fixed inset-0 z-30" onClick={() => setIsStatusOpen(false)} />
                         <div className="absolute top-full left-0 mt-2 w-40 bg-white border border-gray-100 rounded-xl shadow-xl z-50 py-1.5 animate-fade-in-up">
-                            {/* هنا خلينا القائمة تقرأ من المشروع ديناميكياً */}
-                            {statuses.map(s => (
+                            {statuses.map((s: string) => (
                                 <div key={s} onClick={() => { onUpdate(task.id, 'status', s); setIsStatusOpen(false); }} className="px-3 py-2 cursor-pointer hover:bg-gray-50 flex items-center transition-colors">
                                     {getStatusUI(s)}
                                 </div>
@@ -52,7 +66,6 @@ const TaskRow = ({ task, onUpdate, onClick, statuses }: { task: any, onUpdate: (
                 )}
             </div>
 
-            {/* باقي كود الـ Priority والتاريخ زي ما هو بدون تغيير */}
             <div className="col-span-3 md:col-span-2 relative">
                 <div onClick={() => setIsPriorityOpen(!isPriorityOpen)} className="cursor-pointer w-fit hover:opacity-80 transition-opacity">
                     {getPriorityUI(task.priority)}
@@ -78,10 +91,9 @@ const TaskRow = ({ task, onUpdate, onClick, statuses }: { task: any, onUpdate: (
     );
 };
 
-// --- المكون الأساسي للجدول ---
-// ضفنا onTaskClick للـ Props هنا
-export default function TableView({ tasks, isLoading, onUpdate, onCreate, isCreating, onTaskClick, statuses }: any) {
+export default function TableView({ tasks, allTasks = [], isLoading, onUpdate, onCreate, isCreating, onTaskClick, statuses }: any) {
     const [newTaskTitle, setNewTaskTitle] = useState('');
+    const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -89,7 +101,13 @@ export default function TableView({ tasks, isLoading, onUpdate, onCreate, isCrea
         onCreate(newTaskTitle);
         setNewTaskTitle('');
     };
+
+    const toggleRow = (taskId: string) => {
+        setExpandedRows(prev => ({ ...prev, [taskId]: !prev[taskId] }));
+    };
+
     return (
+        // 🌟 التعديل هنا: شيلنا `overflow-hidden` عشان القائمة تظهر براحتها 
         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 animate-fade-in-up pb-2">
             <div className="grid grid-cols-12 gap-4 px-6 py-4 border-b border-gray-100 bg-[#F8FAFC]/80 text-xs font-extrabold text-gray-500 uppercase tracking-wider rounded-t-3xl">
                 <div className="col-span-6 md:col-span-5">Task Name</div>
@@ -102,24 +120,47 @@ export default function TableView({ tasks, isLoading, onUpdate, onCreate, isCrea
                 <div className="flex justify-center p-10"><Loader2 className="w-8 h-8 text-[#1E5A7A] animate-spin" /></div>
             ) : (
                 <div className="flex flex-col">
-                    {tasks.map((task: any) => (
-                        <TaskRow
-                            key={task.id}
-                            task={task}
-                            onUpdate={onUpdate}
-                            onClick={() => onTaskClick(task)}
-                            statuses={statuses || ['To Do', 'In Progress', 'Done']}
-                        />
-                    ))}
+                    {tasks.map((task: Task) => {
+                        const subtasks = allTasks.filter((t: Task) => t.parent_task_id === task.id);
+                        const isExpanded = expandedRows[task.id];
 
-                    <form onSubmit={handleSubmit} className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-gray-50 transition-colors group mt-2">
-                        <div className="col-span-12 md:col-span-5 flex items-center gap-3">
+                        return (
+                            <React.Fragment key={task.id}>
+                                <TaskRow
+                                    task={task}
+                                    hasSubtasks={subtasks.length > 0}
+                                    isExpanded={isExpanded}
+                                    onToggleExpand={() => toggleRow(task.id)}
+                                    onUpdate={onUpdate}
+                                    onClick={() => onTaskClick(task)}
+                                    statuses={statuses}
+                                />
+                                {isExpanded && subtasks.length > 0 && (
+                                    <div className="bg-gray-50/30 animate-fade-in-up border-b border-gray-100">
+                                        {subtasks.map((subtask: Task) => (
+                                            <TaskRow
+                                                key={subtask.id}
+                                                task={subtask}
+                                                isSubtask={true}
+                                                onUpdate={onUpdate}
+                                                onClick={() => onTaskClick(subtask)}
+                                                statuses={statuses}
+                                            />
+                                        ))}
+                                    </div>
+                                )}
+                            </React.Fragment>
+                        );
+                    })}
+
+                    <form onSubmit={handleSubmit} className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-gray-50 transition-colors group mt-2 rounded-b-3xl">
+                        <div className="col-span-12 md:col-span-5 flex items-center gap-3 ml-8">
                             {isCreating ? <Loader2 className="w-4 h-4 text-gray-400 animate-spin shrink-0" /> : <Plus className="w-4 h-4 text-gray-400 shrink-0" />}
                             <input
                                 type="text"
                                 value={newTaskTitle}
                                 onChange={(e) => setNewTaskTitle(e.target.value)}
-                                placeholder="Add new task... (Press Enter)"
+                                placeholder="Add new main task... (Press Enter)"
                                 className="w-full bg-transparent border-none text-sm font-bold text-[#1F2937] focus:outline-none focus:ring-0 placeholder-gray-400"
                                 disabled={isCreating}
                             />

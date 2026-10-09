@@ -1,33 +1,32 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Briefcase } from 'lucide-react';
+import { X, FolderPlus } from 'lucide-react';
 import { PmpService } from '@/services/pmp.service';
 
 interface Props {
     isOpen: boolean;
     onClose: () => void;
     spaceId: string;
-    folderId?: string | null; // 👈 التعديل هنا: استقبال الـ folderId
-    onProjectCreated: () => void;
+    onFolderCreated: () => void;
 }
 
-export default function CreateProjectModal({ isOpen, onClose, spaceId, folderId, onProjectCreated }: Props) {
+export default function CreateFolderModal({ isOpen, onClose, spaceId, onFolderCreated }: Props) {
     const [name, setName] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
 
     if (!isOpen) return null;
 
-    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!name.trim()) return setError('Project name is required');
+        if (!name.trim()) return setError('Folder name is required');
 
         setIsLoading(true); setError('');
         try {
-            await PmpService.createProject({ name, space_id: spaceId, folder_id: folderId }); // 👈 إرساله للباك إند
+            await PmpService.createFolder({ name, space_id: spaceId });
             setName('');
-            onProjectCreated();
+            onFolderCreated();
             onClose();
         } catch (err: any) {
             setError(err.message || 'Something went wrong');
@@ -45,12 +44,12 @@ export default function CreateProjectModal({ isOpen, onClose, spaceId, folderId,
                 </button>
 
                 <div className="flex items-center gap-4 mb-8">
-                    <div className="w-12 h-12 bg-[#3A7C15]/10 text-[#3A7C15] rounded-2xl flex items-center justify-center">
-                        <Briefcase size={24} strokeWidth={2.5} />
+                    <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center">
+                        <FolderPlus size={24} strokeWidth={2.5} />
                     </div>
                     <div>
-                        <h2 className="text-xl font-extrabold text-[#1F2937]">New Project</h2>
-                        <p className="text-sm text-gray-500 font-medium">Add a new project to this {folderId ? 'folder' : 'workspace'}.</p>
+                        <h2 className="text-xl font-extrabold text-[#1F2937]">New Folder</h2>
+                        <p className="text-sm text-gray-500 font-medium">Group projects inside this workspace.</p>
                     </div>
                 </div>
 
@@ -58,12 +57,12 @@ export default function CreateProjectModal({ isOpen, onClose, spaceId, folderId,
 
                 <form onSubmit={handleSubmit} className="space-y-5">
                     <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-2">Project Name</label>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">Folder Name</label>
                         <input
                             type="text"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            placeholder="e.g. Website Redesign..."
+                            placeholder="e.g. Q1 Marketing..."
                             className="w-full border border-gray-200 bg-gray-50 focus:bg-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#1E5A7A] focus:ring-4 focus:ring-[#1E5A7A]/10 transition-all font-medium"
                             autoFocus
                         />
@@ -71,8 +70,8 @@ export default function CreateProjectModal({ isOpen, onClose, spaceId, folderId,
 
                     <div className="flex items-center justify-end gap-3 pt-4">
                         <button type="button" onClick={onClose} className="px-5 py-2.5 text-sm font-bold text-gray-600 hover:text-gray-900 transition-colors">Cancel</button>
-                        <button type="submit" disabled={isLoading} className="px-6 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-[#1E5A7A] to-[#2A6B8F] rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5 disabled:opacity-70 flex items-center justify-center min-w-[120px]">
-                            {isLoading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : 'Create Project'}
+                        <button type="submit" disabled={isLoading} className="px-6 py-2.5 text-sm font-bold text-white bg-blue-600 rounded-xl shadow-lg hover:bg-blue-700 transition-all transform hover:-translate-y-0.5 disabled:opacity-70 flex items-center justify-center min-w-[120px]">
+                            {isLoading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : 'Create Folder'}
                         </button>
                     </div>
                 </form>

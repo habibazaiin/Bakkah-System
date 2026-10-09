@@ -10,6 +10,7 @@ import KanbanView from '@/components/pmp/project/KanbanView';
 import MetricsView from '@/components/pmp/project/MetricsView';
 import GanttView from '@/components/pmp/project/GanttView';
 import TaskDetailsSidebar from '@/components/pmp/project/TaskDetailsSidebar';
+import { Task, Project } from '@/types/pmp.types';
 
 type ViewType = 'table' | 'kanban' | 'gantt' | 'metrics' | 'ai';
 
@@ -18,27 +19,24 @@ export default function ProjectPage() {
     const projectId = params.projectId as string;
 
     const [activeView, setActiveView] = useState<ViewType>('table');
-    const [tasks, setTasks] = useState<any[]>([]);
-    const [project, setProject] = useState<any>(null); // State لبيانات المشروع الحقيقية
+    const [tasks, setTasks] = useState<Task[]>([]);
+    const [project, setProject] = useState<Project | null>(null);
     const [isLoadingData, setIsLoadingData] = useState(true);
     const [isCreatingTask, setIsCreatingTask] = useState(false);
-    const [selectedTask, setSelectedTask] = useState<any>(null);
+    const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
-    // حساب الـ Progress الحقيقي بناءً على المهام المنجزة
-    const projectProgress = tasks.length > 0 ? Math.round((tasks.filter(t => t.status === 'Done').length / tasks.length) * 100) : 0;
+    const mainTasks = tasks.filter(t => !t.parent_task_id);
+    const projectProgress = mainTasks.length > 0 ? Math.round((mainTasks.filter(t => t.status === 'Done').length / mainTasks.length) * 100) : 0;
 
     const fetchData = async () => {
         setIsLoadingData(true);
         try {
-            // جلب المهام
             const fetchedTasks = await PmpService.getTasks(projectId);
             setTasks(fetchedTasks);
 
-            // جلب تفاصيل المشروع عشان اسمه
             const allProjects = await PmpService.getProjects();
             const currentProj = allProjects.find((p: any) => p.id === projectId);
             if (currentProj) setProject(currentProj);
-
         } catch (error) {
             console.error("Error fetching data:", error);
         } finally {
@@ -86,55 +84,35 @@ export default function ProjectPage() {
 
     const handleAddStatus = async (newStatus: string) => {
         if (!project || !newStatus.trim()) return;
-
-        // جلب الحالات الحالية (أو الأساسية لو مفيش)
         const currentStatuses = project.statuses || ['To Do', 'In Progress', 'Done'];
-        if (currentStatuses.includes(newStatus.trim())) return; // منع التكرار
+        if (currentStatuses.includes(newStatus.trim())) return;
 
         const updatedStatuses = [...currentStatuses, newStatus.trim()];
-
-        // تحديث الشاشة فوراً (Optimistic UI)
         setProject({ ...project, statuses: updatedStatuses });
 
         try {
             await PmpService.updateProject(projectId, { statuses: updatedStatuses });
         } catch (error) {
-            console.error("Error adding status:", error);
-            setProject({ ...project, statuses: currentStatuses }); // نرجعها لو حصل إيرور
+            setProject({ ...project, statuses: currentStatuses });
         }
     };
 
     const renderActiveView = () => {
         switch (activeView) {
             case 'table':
-                return <TableView
-                    tasks={tasks}
-                    isLoading={isLoadingData}
-                    onUpdate={handleUpdateTask}
-                    onCreate={handleCreateTask}
-                    isCreating={isCreatingTask}
-                    onTaskClick={setSelectedTask}
-                    statuses={project?.statuses || ['To Do', 'In Progress', 'Done']} // 👈 السطر ده
-                />;
+                return <TableView tasks={mainTasks} allTasks={tasks} isLoading={isLoadingData} onUpdate={handleUpdateTask} onCreate={handleCreateTask} isCreating={isCreatingTask} onTaskClick={setSelectedTask} statuses={project?.statuses || ['To Do', 'In Progress', 'Done']} />;
             case 'kanban':
-                return <KanbanView
-                    tasks={tasks}
-                    isLoading={isLoadingData}
-                    onUpdate={handleUpdateTask}
-                    onTaskClick={setSelectedTask}
-                    statuses={project?.statuses || ['To Do', 'In Progress', 'Done']}
-                    onAddStatus={handleAddStatus}
-                />;
-            case 'metrics': return <MetricsView tasks={tasks} isLoading={isLoadingData} />;
-            case 'gantt': return <GanttView tasks={tasks} isLoading={isLoadingData} onTaskClick={setSelectedTask} onUpdate={handleUpdateTask} />;
+                return <KanbanView tasks={mainTasks} allTasks={tasks} isLoading={isLoadingData} onUpdate={handleUpdateTask} onTaskClick={setSelectedTask} statuses={project?.statuses || ['To Do', 'In Progress', 'Done']} onAddStatus={handleAddStatus} />;
+            case 'metrics': 
+                return <MetricsView tasks={mainTasks} isLoading={isLoadingData} />;
+            case 'gantt': 
+                return <GanttView tasks={mainTasks} isLoading={isLoadingData} onTaskClick={setSelectedTask} onUpdate={handleUpdateTask} />;
             case 'ai':
                 return (
                     <div className="bg-gradient-to-br from-[#1E5A7A]/5 to-[#B03052]/5 rounded-3xl shadow-sm border border-[#1E5A7A]/10 p-8 flex flex-col items-center justify-center min-h-[400px] animate-fade-in-up">
                         <Sparkles className="w-16 h-16 text-[#B03052]/40 mb-4" strokeWidth={1.5} />
                         <h3 className="text-xl font-bold text-[#1E5A7A]">AI Project Health & WBS</h3>
-                        <div className="mt-4 px-4 py-1.5 bg-gradient-to-r from-[#1E5A7A] to-[#2A6B8F] text-white text-xs font-bold rounded-full uppercase tracking-widest shadow-sm">
-                            Coming Soon
-                        </div>
+                        <div className="mt-4 px-4 py-1.5 bg-gradient-to-r from-[#1E5A7A] to-[#2A6B8F] text-white text-xs font-bold rounded-full uppercase tracking-widest shadow-sm">Coming Soon</div>
                     </div>
                 );
             default: return null;
@@ -147,13 +125,10 @@ export default function ProjectPage() {
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
                     <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
-                            {/* الاسم بقى بييجي من الداتابيز حقيقي! */}
                             <h1 className="text-3xl font-black text-[#1F2937] tracking-tight">{project ? project.name : 'Loading...'}</h1>
                             {getStatusUI('In Progress')}
                         </div>
-                        <p className="text-gray-500 font-medium text-sm max-w-2xl leading-relaxed mb-6">
-                            Manage your tasks, track progress, and collaborate seamlessly.
-                        </p>
+                        <p className="text-gray-500 font-medium text-sm max-w-2xl leading-relaxed mb-6">Manage your tasks, track progress, and collaborate seamlessly.</p>
                     </div>
 
                     <div className="w-full md:w-64 bg-gray-50 p-5 rounded-2xl border border-gray-100 shrink-0">
@@ -185,6 +160,8 @@ export default function ProjectPage() {
                 onUpdate={handleUpdateTask}
                 onDelete={handleDeleteTask}
                 statuses={project?.statuses || ['To Do', 'In Progress', 'Done']}
+                allTasks={tasks}
+                refreshTasks={fetchData}
             />
         </div>
     );

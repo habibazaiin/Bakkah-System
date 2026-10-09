@@ -1,10 +1,10 @@
-// src/services/pmp.service.ts
 import { supabase } from '@/lib/supabase';
+import { Space, Project, Task, Comment, Attachment, Activity, Folder } from '@/types/pmp.types';
 
-const API_URL = 'http://127.0.0.1:8000/api/pmp';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/pmp';
 
 export const PmpService = {
-    async getHeaders() {
+    async getHeaders(): Promise<Record<string, string>> {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) throw new Error("No active session");
         return {
@@ -13,15 +13,14 @@ export const PmpService = {
         };
     },
 
-    async getSpaces() {
+    async getSpaces(): Promise<Space[]> {
         const headers = await this.getHeaders();
         const response = await fetch(`${API_URL}/spaces/`, { method: 'GET', headers });
         if (!response.ok) throw new Error('Failed to fetch spaces');
         return response.json();
     },
 
-    // الدالة الجديدة لإنشاء Space
-    async createSpace(data: { name: string; description?: string }) {
+    async createSpace(data: { name: string; description?: string }): Promise<Space> {
         const headers = await this.getHeaders();
         const response = await fetch(`${API_URL}/spaces/`, {
             method: 'POST',
@@ -32,16 +31,14 @@ export const PmpService = {
         return response.json();
     },
 
-    // جلب كل المشاريع
-    async getProjects() {
+    async getProjects(): Promise<Project[]> {
         const headers = await this.getHeaders();
         const response = await fetch(`${API_URL}/projects/`, { method: 'GET', headers });
         if (!response.ok) throw new Error('Failed to fetch projects');
         return response.json();
     },
 
-    // إنشاء مشروع جديد
-    async createProject(data: { name: string; space_id: string; description?: string }) {
+    async createProject(data: { name: string; space_id: string; folder_id?: string | null; description?: string }): Promise<Project> {
         const headers = await this.getHeaders();
         const response = await fetch(`${API_URL}/projects/`, {
             method: 'POST',
@@ -51,16 +48,15 @@ export const PmpService = {
         if (!response.ok) throw new Error('Failed to create project');
         return response.json();
     },
-    // جلب مهام مشروع معين
-    async getTasks(projectId: string) {
+
+    async getTasks(projectId: string): Promise<Task[]> {
         const headers = await this.getHeaders();
         const response = await fetch(`${API_URL}/tasks/${projectId}`, { method: 'GET', headers });
         if (!response.ok) throw new Error('Failed to fetch tasks');
         return response.json();
     },
 
-    // إنشاء مهمة جديدة
-    async createTask(data: { title: string; project_id: string; status?: string; priority?: string }) {
+    async createTask(data: { title: string; project_id: string; status?: string; priority?: string }): Promise<Task> {
         const headers = await this.getHeaders();
         const response = await fetch(`${API_URL}/tasks/`, {
             method: 'POST',
@@ -71,8 +67,7 @@ export const PmpService = {
         return response.json();
     },
 
-    // تحديث المهمة
-    async updateTask(taskId: string, data: any) {
+    async updateTask(taskId: string, data: Partial<Task>): Promise<Task> {
         const headers = await this.getHeaders();
         const response = await fetch(`${API_URL}/tasks/${taskId}`, {
             method: 'PATCH',
@@ -83,24 +78,21 @@ export const PmpService = {
         return response.json();
     },
 
-    // حذف مهمة
-    async deleteTask(taskId: string) {
+    async deleteTask(taskId: string): Promise<{ message: string }> {
         const headers = await this.getHeaders();
         const response = await fetch(`${API_URL}/tasks/${taskId}`, { method: 'DELETE', headers });
         if (!response.ok) throw new Error('Failed to delete task');
         return response.json();
     },
 
-    // مسح مساحة العمل (Space)
-    async deleteSpace(spaceId: string) {
+    async deleteSpace(spaceId: string): Promise<{ message: string }> {
         const headers = await this.getHeaders();
         const response = await fetch(`${API_URL}/spaces/${spaceId}`, { method: 'DELETE', headers });
         if (!response.ok) throw new Error('Failed to delete space');
         return response.json();
     },
 
-    // تحديث المشروع (زي إضافة حالات جديدة)
-    async updateProject(projectId: string, data: any) {
+    async updateProject(projectId: string, data: Partial<Project>): Promise<Project> {
         const headers = await this.getHeaders();
         const response = await fetch(`${API_URL}/projects/${projectId}`, {
             method: 'PATCH',
@@ -111,16 +103,14 @@ export const PmpService = {
         return response.json();
     },
 
-    // جلب تعليقات المهمة
-    async getTaskComments(taskId: string) {
+    async getTaskComments(taskId: string): Promise<Comment[]> {
         const headers = await this.getHeaders();
         const response = await fetch(`${API_URL}/comments/${taskId}`, { headers });
         if (!response.ok) throw new Error('Failed to fetch comments');
         return response.json();
     },
 
-    // إضافة تعليق جديد
-    async addComment(taskId: string, content: string) {
+    async addComment(taskId: string, content: string): Promise<Comment> {
         const headers = await this.getHeaders();
         const response = await fetch(`${API_URL}/comments/`, {
             method: 'POST',
@@ -131,21 +121,15 @@ export const PmpService = {
         return response.json();
     },
 
-    // جلب المرفقات
-    async getTaskAttachments(taskId: string) {
+    async getTaskAttachments(taskId: string): Promise<Attachment[]> {
         const headers = await this.getHeaders();
         const response = await fetch(`${API_URL}/attachments/${taskId}`, { headers });
         if (!response.ok) throw new Error('Failed to fetch attachments');
         return response.json();
     },
 
-    // رفع ملف جديد
-    // رفع ملف جديد
-    async uploadAttachment(taskId: string, file: File) {
-        // بنجيب الهيدرز بالطريقة المعتمدة في المشروع كله
-        const headers = await this.getHeaders() as Record<string, string>;
-
-        // بنحذف الـ Content-Type عشان المتصفح يظبطه لوحده (Boundary) للملفات
+    async uploadAttachment(taskId: string, file: File): Promise<Attachment> {
+        const headers = await this.getHeaders();
         delete headers['Content-Type'];
 
         const formData = new FormData();
@@ -154,7 +138,7 @@ export const PmpService = {
 
         const response = await fetch(`${API_URL}/attachments/`, {
             method: 'POST',
-            headers, // كده ضامنين إن التوكن موجود 100%
+            headers,
             body: formData
         });
 
@@ -162,11 +146,50 @@ export const PmpService = {
         return response.json();
     },
 
-    // جلب سجل النشاطات
-    async getTaskActivities(taskId: string) {
+    async getTaskActivities(taskId: string): Promise<Activity[]> {
         const headers = await this.getHeaders();
         const response = await fetch(`${API_URL}/activities/${taskId}`, { headers });
         if (!response.ok) throw new Error('Failed to fetch activities');
         return response.json();
-    }
+    },
+
+    // جلب الفولدرات
+    async getFolders(spaceId: string): Promise<Folder[]> {
+        const headers = await this.getHeaders();
+        const response = await fetch(`${API_URL}/folders/${spaceId}`, { headers });
+        if (!response.ok) throw new Error('Failed to fetch folders');
+        return response.json();
+    },
+
+    // إنشاء فولدر
+    async createFolder(data: { name: string; space_id: string }): Promise<Folder> {
+        const headers = await this.getHeaders();
+        const response = await fetch(`${API_URL}/folders/`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(data)
+        });
+        if (!response.ok) throw new Error('Failed to create folder');
+        return response.json();
+    },
+
+    // حذف فولدر
+    async deleteFolder(folderId: string): Promise<{ message: string }> {
+        const headers = await this.getHeaders();
+        const response = await fetch(`${API_URL}/folders/${folderId}`, { method: 'DELETE', headers });
+        if (!response.ok) throw new Error('Failed to delete folder');
+        return response.json();
+    },
+
+    // إنشاء Subtask
+    async createSubtask(data: { title: string; project_id: string; parent_task_id: string; status?: string; priority?: string }): Promise<Task> {
+        const headers = await this.getHeaders();
+        const response = await fetch(`${API_URL}/tasks/`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(data)
+        });
+        if (!response.ok) throw new Error('Failed to create subtask');
+        return response.json();
+    },
 };

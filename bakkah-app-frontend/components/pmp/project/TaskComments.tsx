@@ -1,17 +1,10 @@
-// src/components/pmp/project/TaskComments.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import { Send, Loader2, MessageSquare } from 'lucide-react';
 import { PmpService } from '@/services/pmp.service';
-import { TEAM_MEMBERS } from './AssigneeSelect';
-
-interface Comment {
-    id: string;
-    content: string;
-    created_at: string;
-    user_id: string;
-}
+import { TEAM_MEMBERS } from '@/constants/team';
+import { Comment } from '@/types/pmp.types';
 
 export default function TaskComments({ taskId }: { taskId: string }) {
     const [comments, setComments] = useState<Comment[]>([]);
@@ -19,7 +12,6 @@ export default function TaskComments({ taskId }: { taskId: string }) {
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // بنجيب التعليقات أول ما المكون يفتح
     useEffect(() => {
         const fetchComments = async () => {
             try {
@@ -41,8 +33,7 @@ export default function TaskComments({ taskId }: { taskId: string }) {
         setIsSubmitting(true);
         try {
             const addedComment = await PmpService.addComment(taskId, newComment.trim());
-            // بنضيف التعليق الجديد للشاشة فوراً عشان اليوزر ميحسش بتأخير
-            setComments(prev => [...prev, addedComment]);
+            setComments((prev) => [...prev, addedComment]);
             setNewComment('');
         } catch (error) {
             console.error("Error adding comment:", error);
@@ -65,10 +56,9 @@ export default function TaskComments({ taskId }: { taskId: string }) {
                 ) : comments.length === 0 ? (
                     <p className="text-sm text-gray-400 font-medium text-center py-4">No comments yet. Start the conversation!</p>
                 ) : (
-                    comments.map(comment => {
-                        // بنحاول نجيب بيانات اليوزر (مؤقتاً من الداتا الوهمية لحد ما نربط بجدول اليوزرز الحقيقي)
-                        const user = TEAM_MEMBERS.find(m => m.id === comment.user_id) || { name: 'User', initials: 'U', color: 'bg-gray-100 text-gray-600' };
-                        
+                    comments.map((comment) => {
+                        const user = TEAM_MEMBERS.find((m) => m.id === comment.user_id) || { name: 'User', initials: 'U', color: 'bg-gray-100 text-gray-600' };
+
                         return (
                             <div key={comment.id} className="flex gap-3 animate-fade-in-up">
                                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shrink-0 ${user.color}`}>
@@ -78,7 +68,7 @@ export default function TaskComments({ taskId }: { taskId: string }) {
                                     <div className="flex justify-between items-center mb-1">
                                         <span className="text-xs font-bold text-[#1F2937]">{user.name}</span>
                                         <span className="text-[10px] font-bold text-gray-400">
-                                            {new Date(comment.created_at).toLocaleString('en-GB', { hour: '2-digit', minute:'2-digit', day:'numeric', month:'short' })}
+                                            {new Date(comment.created_at).toLocaleString('en-GB', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}
                                         </span>
                                     </div>
                                     <p className="text-sm text-gray-600 whitespace-pre-wrap">{comment.content}</p>
@@ -89,9 +79,9 @@ export default function TaskComments({ taskId }: { taskId: string }) {
                 )}
             </div>
 
-            {/* مكان كتابة التعليق */}
+            {/* كتابة تعليق */}
             <form onSubmit={handleSubmit} className="relative">
-                <textarea 
+                <textarea
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
                     placeholder="Ask a question or post an update..."
@@ -103,7 +93,7 @@ export default function TaskComments({ taskId }: { taskId: string }) {
                         }
                     }}
                 />
-                <button 
+                <button
                     type="submit"
                     disabled={!newComment.trim() || isSubmitting}
                     className="absolute bottom-3 right-3 p-2 bg-[#1E5A7A] hover:bg-[#154560] disabled:bg-gray-200 text-white rounded-lg transition-colors"

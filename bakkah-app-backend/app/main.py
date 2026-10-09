@@ -1,12 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.api.routers.pmp import spaces
-from app.api.routers.pmp import spaces, projects, tasks, comments, attachments, activities
+from app.api.routers.pmp import spaces, projects, tasks, comments, attachments, activities, folders
 
 app = FastAPI(title=settings.PROJECT_NAME)
 
-# إعدادات الـ CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"], 
@@ -16,6 +14,7 @@ app.add_middleware(
 )
 
 app.include_router(spaces.router, prefix="/api/pmp")
+app.include_router(folders.router, prefix="/api/pmp")  # 👈 أضفنا راوتر الفولدرز
 app.include_router(projects.router, prefix="/api/pmp")
 app.include_router(tasks.router, prefix="/api/pmp")
 app.include_router(comments.router, prefix="/api/pmp/comments", tags=["Comments"])

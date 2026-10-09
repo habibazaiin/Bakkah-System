@@ -8,29 +8,38 @@ import { supabase } from '@/lib/supabase';
 import { PmpService } from '@/services/pmp.service';
 import CreateSpaceModal from '@/components/pmp/CreateSpaceModal';
 import CreateProjectModal from '@/components/pmp/CreateProjectModal';
-import { LayoutDashboard, FolderKanban, Bell, Settings, Plus, Search, Layers, Loader2, ChevronRight, ChevronDown, Briefcase, Trash2 } from 'lucide-react';
+import CreateFolderModal from '@/components/pmp/CreateFolderModal'; // 👈 استيراد مودال الفولدر
+import { LayoutDashboard, FolderKanban, Bell, Settings, Plus, Search, Layers, Loader2, ChevronRight, ChevronDown, Trash2, Folder as FolderIcon, Briefcase } from 'lucide-react';
+import { Space, Project, Folder } from '@/types/pmp.types';
 
 export default function PmpLayout({ children }: { children: React.ReactNode }) {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [isAuthLoading, setIsAuthLoading] = useState(true);
-    const [spaceToDelete, setSpaceToDelete] = useState<any>(null);
-    const [isDeletingSpace, setIsDeletingSpace] = useState(false);
-    // داتا السايد بار
-    const [spaces, setSpaces] = useState<any[]>([]);
-    const [projects, setProjects] = useState<any[]>([]);
+    
+    // Data States
+    const [spaces, setSpaces] = useState<Space[]>([]);
+    const [projects, setProjects] = useState<Project[]>([]);
+    const [folders, setFolders] = useState<Folder[]>([]);
     const [isLoadingData, setIsLoadingData] = useState(false);
 
-    // حالة الـ Accordion (إيه الـ Space اللي مفتوح دلوقتي)
+    // Expansion States
     const [expandedSpaces, setExpandedSpaces] = useState<Record<string, boolean>>({});
+    const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
 
-    // حالات المودال
+    // Modals States
     const [isCreateSpaceModalOpen, setIsCreateSpaceModalOpen] = useState(false);
     const [spaceIdForNewProject, setSpaceIdForNewProject] = useState<string | null>(null);
+    const [folderIdForNewProject, setFolderIdForNewProject] = useState<string | null>(null);
+    const [spaceIdForNewFolder, setSpaceIdForNewFolder] = useState<string | null>(null);
+    
+    // Delete States
+    const [spaceToDelete, setSpaceToDelete] = useState<Space | null>(null);
+    const [folderToDelete, setFolderToDelete] = useState<Folder | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const router = useRouter();
     const pathname = usePathname();
 
-    // جلب الداتا (Spaces + Projects) مع بعض عشان السرعة
     const fetchData = async () => {
         setIsLoadingData(true);
         try {
@@ -38,10 +47,16 @@ export default function PmpLayout({ children }: { children: React.ReactNode }) {
                 PmpService.getSpaces(),
                 PmpService.getProjects()
             ]);
+            
+            // جلب كل الفولدرات لكل الـ spaces
+            const foldersPromises = fetchedSpaces.map(s => PmpService.getFolders(s.id).catch(() => []));
+            const foldersArrays = await Promise.all(foldersPromises);
+            const fetchedFolders = foldersArrays.flat();
+
             setSpaces(fetchedSpaces);
             setProjects(fetchedProjects);
+            setFolders(fetchedFolders);
 
-            // فتح أول Space تلقائياً لو موجود
             if (fetchedSpaces.length > 0 && Object.keys(expandedSpaces).length === 0) {
                 setExpandedSpaces({ [fetchedSpaces[0].id]: true });
             }
@@ -65,24 +80,38 @@ export default function PmpLayout({ children }: { children: React.ReactNode }) {
         checkAuthAndFetchData();
     }, [router]);
 
-    // دالة لفتح وقفل الـ Space
     const toggleSpace = (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
         setExpandedSpaces(prev => ({ ...prev, [id]: !prev[id] }));
     };
 
+    const toggleFolder = (id: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setExpandedFolders(prev => ({ ...prev, [id]: !prev[id] }));
+    };
+
     const handleDeleteSpace = async () => {
         if (!spaceToDelete) return;
-        setIsDeletingSpace(true);
+        setIsDeleting(true);
         try {
             await PmpService.deleteSpace(spaceToDelete.id);
             setSpaceToDelete(null);
-            fetchData(); // Refresh Data
-            router.push('/pmp'); // التوجيه للصفحة الرئيسية في حال كان جوه مشروع اتمسح
-        } catch (error) {
-            console.error("Error deleting space:", error);
+            fetchData();
+            router.push('/pmp');
         } finally {
-            setIsDeletingSpace(false);
+            setIsDeleting(false);
+        }
+    };
+
+    const handleDeleteFolder = async () => {
+        if (!folderToDelete) return;
+        setIsDeleting(true);
+        try {
+            await PmpService.deleteFolder(folderToDelete.id);
+            setFolderToDelete(null);
+            fetchData();
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -110,11 +139,9 @@ export default function PmpLayout({ children }: { children: React.ReactNode }) {
                     <Link href="/pmp" className={`p-3 rounded-2xl shadow-sm transition-all duration-300 ${pathname === '/pmp' ? 'bg-white/10 text-white' : 'text-white/50 hover:bg-white/5 hover:text-white'}`} title="Dashboard">
                         <LayoutDashboard size={22} strokeWidth={2} />
                     </Link>
-
                     <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className={`p-3 rounded-2xl transition-all duration-300 ${isSidebarOpen ? 'bg-white/10 text-white' : 'text-white/50 hover:bg-white/5 hover:text-white'}`} title="Workspaces">
                         <FolderKanban size={22} strokeWidth={2} />
                     </button>
-
                     <button className="p-3 text-white/50 hover:bg-white/5 hover:text-white rounded-2xl transition-all duration-300 relative" title="Notifications">
                         <Bell size={22} strokeWidth={2} />
                         <span className="absolute top-3 right-3.5 w-2 h-2 bg-[#B03052] rounded-full border border-[#12394D]"></span>
@@ -132,43 +159,34 @@ export default function PmpLayout({ children }: { children: React.ReactNode }) {
             </aside>
 
             {/* Secondary Sidebar - Workspaces & Projects */}
-            <aside className={`bg-white border-r border-gray-200 flex flex-col shrink-0 transition-all duration-300 ease-in-out ${isSidebarOpen ? 'w-64 translate-x-0' : 'w-0 -translate-x-full opacity-0 overflow-hidden'}`}>
+            <aside className={`bg-white border-r border-gray-200 flex flex-col shrink-0 transition-all duration-300 ease-in-out ${isSidebarOpen ? 'w-72 translate-x-0' : 'w-0 -translate-x-full opacity-0 overflow-hidden'}`}>
                 <div className="p-6 border-b border-gray-100 flex items-center justify-between">
                     <h2 className="text-sm font-black text-[#1E5A7A] uppercase tracking-wider">Workspaces</h2>
-                    <button
-                        onClick={() => setIsCreateSpaceModalOpen(true)}
-                        className="text-gray-400 hover:text-[#B03052] hover:bg-red-50 p-1.5 rounded-lg transition-colors"
-                        title="New Space"
-                    >
+                    <button onClick={() => setIsCreateSpaceModalOpen(true)} className="text-gray-400 hover:text-[#B03052] hover:bg-red-50 p-1.5 rounded-lg transition-colors" title="New Space">
                         <Plus size={18} strokeWidth={3} />
                     </button>
                 </div>
 
                 <div className="p-4 flex-1 overflow-y-auto">
                     {isLoadingData ? (
-                        <div className="flex justify-center p-8">
-                            <Loader2 className="w-6 h-6 text-[#1E5A7A] animate-spin" />
-                        </div>
+                        <div className="flex justify-center p-8"><Loader2 className="w-6 h-6 text-[#1E5A7A] animate-spin" /></div>
                     ) : spaces.length === 0 ? (
-                        <div className="text-center p-6 text-sm text-gray-400 font-medium bg-gray-50 rounded-2xl border border-dashed border-gray-200 mt-2">
-                            No spaces yet.<br />Click + to create one.
-                        </div>
+                        <div className="text-center p-6 text-sm text-gray-400 font-medium bg-gray-50 rounded-2xl border border-dashed border-gray-200 mt-2">No spaces yet.<br />Click + to create one.</div>
                     ) : (
                         <div className="space-y-3">
                             {spaces.map((space) => {
+                                const isSpaceExpanded = expandedSpaces[space.id];
+                                const spaceFolders = folders.filter(f => f.space_id === space.id);
                                 const spaceProjects = projects.filter(p => p.space_id === space.id);
-                                const isExpanded = expandedSpaces[space.id];
+                                const standaloneProjects = spaceProjects.filter(p => !p.folder_id); // مشاريع ملهاش فولدر
 
                                 return (
                                     <div key={space.id} className="animate-fade-in-up">
                                         {/* Space Header */}
-                                        <div
-                                            onClick={(e) => toggleSpace(space.id, e)}
-                                            className={`flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer group transition-all border ${isExpanded ? 'bg-[#F8FAFC] border-gray-100' : 'border-transparent hover:bg-gray-50'}`}
-                                        >
+                                        <div onClick={(e) => toggleSpace(space.id, e)} className={`flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer group transition-all border ${isSpaceExpanded ? 'bg-[#F8FAFC] border-gray-100' : 'border-transparent hover:bg-gray-50'}`}>
                                             <div className="flex items-center gap-3 overflow-hidden">
                                                 <div className="text-gray-400 group-hover:text-[#1E5A7A] transition-colors">
-                                                    {isExpanded ? <ChevronDown size={16} strokeWidth={2.5} /> : <ChevronRight size={16} strokeWidth={2.5} />}
+                                                    {isSpaceExpanded ? <ChevronDown size={16} strokeWidth={2.5} /> : <ChevronRight size={16} strokeWidth={2.5} />}
                                                 </div>
                                                 <div className="w-7 h-7 rounded-lg bg-white shadow-sm border border-gray-100 text-[#1E5A7A] flex items-center justify-center shrink-0">
                                                     <Layers size={14} strokeWidth={2.5} />
@@ -176,45 +194,69 @@ export default function PmpLayout({ children }: { children: React.ReactNode }) {
                                                 <span className="font-bold text-sm text-gray-700 group-hover:text-[#1E5A7A] transition-colors truncate">
                                                     {space.name}
                                                 </span>
-                                            </div>{/* زراير الإضافة والحذف */}
+                                            </div>
+                                            {/* Space Actions */}
                                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all shrink-0">
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); setSpaceIdForNewProject(space.id); }}
-                                                    className="text-gray-400 hover:text-[#3A7C15] p-1.5 rounded-md hover:bg-green-50 transition-all"
-                                                    title="Add Project"
-                                                >
-                                                    <Plus size={16} strokeWidth={3} />
-                                                </button>
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); setSpaceToDelete(space); }}
-                                                    className="text-gray-400 hover:text-[#B03052] p-1.5 rounded-md hover:bg-red-50 transition-all"
-                                                    title="Delete Space"
-                                                >
-                                                    <Trash2 size={16} strokeWidth={3} />
-                                                </button>
+                                                <button onClick={(e) => { e.stopPropagation(); setSpaceIdForNewFolder(space.id); }} className="text-gray-400 hover:text-blue-600 p-1.5 rounded-md hover:bg-blue-50 transition-all" title="Add Folder"><FolderIcon size={14} strokeWidth={2.5} /></button>
+                                                <button onClick={(e) => { e.stopPropagation(); setSpaceIdForNewProject(space.id); setFolderIdForNewProject(null); }} className="text-gray-400 hover:text-[#3A7C15] p-1.5 rounded-md hover:bg-green-50 transition-all" title="Add Project"><Plus size={16} strokeWidth={3} /></button>
+                                                <button onClick={(e) => { e.stopPropagation(); setSpaceToDelete(space); }} className="text-gray-400 hover:text-[#B03052] p-1.5 rounded-md hover:bg-red-50 transition-all" title="Delete Space"><Trash2 size={16} strokeWidth={3} /></button>
                                             </div>
                                         </div>
 
-                                        {/* Projects List تحت الـ Space */}
-                                        {isExpanded && (
-                                            <div className="ml-8 mt-1.5 pl-3 border-l-2 border-gray-100 space-y-1">
-                                                {spaceProjects.length === 0 ? (
-                                                    <div className="text-xs text-gray-400 font-medium py-2 px-3">No projects here.</div>
-                                                ) : (
-                                                    spaceProjects.map(project => {
-                                                        const isActive = pathname === `/pmp/projects/${project.id}`;
-                                                        return (
-                                                            <Link
-                                                                href={`/pmp/projects/${project.id}`}
-                                                                key={project.id}
-                                                                className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-bold transition-all group ${isActive ? 'bg-[#1E5A7A]/10 text-[#1E5A7A]' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}
-                                                            >
-                                                                <div className={`w-1.5 h-1.5 rounded-full transition-colors ${isActive ? 'bg-[#B03052]' : 'bg-gray-300 group-hover:bg-[#1E5A7A]'}`}></div>
-                                                                <span className="truncate">{project.name}</span>
-                                                            </Link>
-                                                        )
-                                                    })
-                                                )}
+                                        {isSpaceExpanded && (
+                                            <div className="ml-5 pl-4 border-l border-gray-200 mt-2 space-y-2">
+                                                
+                                                {/* 1. Folders Render */}
+                                                {spaceFolders.map(folder => {
+                                                    const isFolderExpanded = expandedFolders[folder.id];
+                                                    const folderProjects = spaceProjects.filter(p => p.folder_id === folder.id);
+                                                    
+                                                    return (
+                                                        <div key={folder.id} className="mt-1">
+                                                            <div onClick={(e) => toggleFolder(folder.id, e)} className="flex items-center justify-between px-2 py-1.5 rounded-lg cursor-pointer group hover:bg-gray-50 transition-colors">
+                                                                <div className="flex items-center gap-2 overflow-hidden text-gray-600 group-hover:text-blue-600">
+                                                                    {isFolderExpanded ? <ChevronDown size={14} strokeWidth={2.5} /> : <ChevronRight size={14} strokeWidth={2.5} />}
+                                                                    <FolderIcon size={14} className="fill-current opacity-20" />
+                                                                    <span className="font-bold text-xs truncate">{folder.name}</span>
+                                                                </div>
+                                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all shrink-0">
+                                                                    <button onClick={(e) => { e.stopPropagation(); setSpaceIdForNewProject(space.id); setFolderIdForNewProject(folder.id); }} className="text-gray-400 hover:text-[#3A7C15] p-1 rounded-md hover:bg-green-50" title="Add Project to Folder"><Plus size={14} strokeWidth={3} /></button>
+                                                                    <button onClick={(e) => { e.stopPropagation(); setFolderToDelete(folder); }} className="text-gray-400 hover:text-red-500 p-1 rounded-md hover:bg-red-50" title="Delete Folder"><Trash2 size={14} strokeWidth={3} /></button>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Folder Projects */}
+                                                            {isFolderExpanded && (
+                                                                <div className="ml-5 mt-1 border-l border-gray-100 pl-3 space-y-1">
+                                                                    {folderProjects.length === 0 ? (
+                                                                        <div className="text-[10px] text-gray-400 font-bold py-1">Empty folder</div>
+                                                                    ) : (
+                                                                        folderProjects.map(project => {
+                                                                            const isActive = pathname === `/pmp/projects/${project.id}`;
+                                                                            return (
+                                                                                <Link key={project.id} href={`/pmp/projects/${project.id}`} className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-xs font-bold transition-all group ${isActive ? 'bg-[#1E5A7A]/10 text-[#1E5A7A]' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>
+                                                                                    <div className={`w-1.5 h-1.5 rounded-full transition-colors ${isActive ? 'bg-[#B03052]' : 'bg-gray-300 group-hover:bg-[#1E5A7A]'}`}></div>
+                                                                                    <span className="truncate">{project.name}</span>
+                                                                                </Link>
+                                                                            )
+                                                                        })
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )
+                                                })}
+
+                                                {/* 2. Standalone Projects Render */}
+                                                {standaloneProjects.map(project => {
+                                                    const isActive = pathname === `/pmp/projects/${project.id}`;
+                                                    return (
+                                                        <Link key={project.id} href={`/pmp/projects/${project.id}`} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-bold transition-all group ${isActive ? 'bg-[#1E5A7A]/10 text-[#1E5A7A]' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'}`}>
+                                                            <div className={`w-1.5 h-1.5 rounded-full transition-colors ${isActive ? 'bg-[#B03052]' : 'bg-gray-300 group-hover:bg-[#1E5A7A]'}`}></div>
+                                                            <span className="truncate">{project.name}</span>
+                                                        </Link>
+                                                    )
+                                                })}
                                             </div>
                                         )}
                                     </div>
@@ -227,73 +269,71 @@ export default function PmpLayout({ children }: { children: React.ReactNode }) {
 
             {/* Main Content Area */}
             <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative bg-[#F8FAFC]">
-                {/* Header */}
-                {/* Header */}
                 <header className="h-20 bg-white/60 backdrop-blur-xl border-b border-gray-200 flex items-center justify-between px-8 shrink-0 sticky top-0 z-10">
                     <div className="flex items-center gap-4">
                         <h1 className="text-xl font-extrabold text-[#1F2937] tracking-tight">Overview</h1>
                     </div>
-
                     <div className="flex items-center gap-5">
                         <div className="relative group">
                             <Search className="absolute left-3.5 top-2.5 text-gray-400 group-focus-within:text-[#1E5A7A] transition-colors" size={18} />
-                            <input
-                                type="text"
-                                placeholder="Search everything..."
-                                className="bg-white border border-gray-200 text-sm rounded-full pl-10 pr-4 py-2 focus:outline-none focus:border-[#1E5A7A] focus:ring-4 focus:ring-[#1E5A7A]/10 transition-all w-64 shadow-sm"
-                            />
+                            <input type="text" placeholder="Search everything..." className="bg-white border border-gray-200 text-sm rounded-full pl-10 pr-4 py-2 focus:outline-none focus:border-[#1E5A7A] focus:ring-4 focus:ring-[#1E5A7A]/10 transition-all w-64 shadow-sm" />
                         </div>
-                        {/* تم إزالة زرار Add Task من هنا بناءً على طلبك عشان النظام يكون أنظف */}
                     </div>
                 </header>
 
-                {/* Page Content */}
                 <div className="flex-1 overflow-auto p-8 scroll-smooth">
                     {children}
                 </div>
             </main>
 
             {/* Modals */}
-            <CreateSpaceModal
-                isOpen={isCreateSpaceModalOpen}
-                onClose={() => setIsCreateSpaceModalOpen(false)}
-                onSpaceCreated={fetchData}
+            <CreateSpaceModal isOpen={isCreateSpaceModalOpen} onClose={() => setIsCreateSpaceModalOpen(false)} onSpaceCreated={fetchData} />
+            
+            <CreateFolderModal 
+                isOpen={!!spaceIdForNewFolder} 
+                onClose={() => setSpaceIdForNewFolder(null)} 
+                spaceId={spaceIdForNewFolder || ''} 
+                onFolderCreated={fetchData} 
             />
 
-            <CreateProjectModal
-                isOpen={!!spaceIdForNewProject}
-                onClose={() => setSpaceIdForNewProject(null)}
-                spaceId={spaceIdForNewProject || ''}
-                onProjectCreated={fetchData}
+            <CreateProjectModal 
+                isOpen={!!spaceIdForNewProject} 
+                onClose={() => { setSpaceIdForNewProject(null); setFolderIdForNewProject(null); }} 
+                spaceId={spaceIdForNewProject || ''} 
+                folderId={folderIdForNewProject}
+                onProjectCreated={fetchData} 
             />
 
-            {/* Modal التأكيد على مسح الـ Space */}
+            {/* Delete Space Confirm */}
             {spaceToDelete && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                     <div className="fixed inset-0 bg-[#1F2937]/40 backdrop-blur-sm transition-opacity" onClick={() => setSpaceToDelete(null)} />
                     <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 animate-fade-in-up z-10 text-center">
-                        <div className="w-16 h-16 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm border border-red-100">
-                            <Trash2 size={32} strokeWidth={2.5} />
-                        </div>
+                        <div className="w-16 h-16 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm border border-red-100"><Trash2 size={32} strokeWidth={2.5} /></div>
                         <h2 className="text-2xl font-black text-[#1F2937] mb-3">Delete Workspace?</h2>
-                        <p className="text-sm text-gray-500 font-medium mb-8 leading-relaxed">
-                            Are you sure you want to delete <strong className="text-[#1F2937] px-1">{spaceToDelete.name}</strong>?
-                            <br />All projects and tasks inside it will be permanently lost.
-                        </p>
+                        <p className="text-sm text-gray-500 font-medium mb-8 leading-relaxed">Are you sure you want to delete <strong className="text-[#1F2937] px-1">{spaceToDelete.name}</strong>?<br />All folders, projects, and tasks inside it will be permanently lost.</p>
                         <div className="flex gap-3">
-                            <button
-                                onClick={() => setSpaceToDelete(null)}
-                                disabled={isDeletingSpace}
-                                className="flex-1 px-5 py-3.5 bg-gray-50 text-gray-700 font-bold rounded-xl hover:bg-gray-100 transition-colors border border-gray-200"
-                            >
-                                Cancel
+                            <button onClick={() => setSpaceToDelete(null)} disabled={isDeleting} className="flex-1 px-5 py-3.5 bg-gray-50 text-gray-700 font-bold rounded-xl hover:bg-gray-100 transition-colors border border-gray-200">Cancel</button>
+                            <button onClick={handleDeleteSpace} disabled={isDeleting} className="flex-1 px-5 py-3.5 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-colors shadow-md flex items-center justify-center gap-2">
+                                {isDeleting ? <Loader2 size={18} className="animate-spin" /> : 'Yes, Delete'}
                             </button>
-                            <button
-                                onClick={handleDeleteSpace}
-                                disabled={isDeletingSpace}
-                                className="flex-1 px-5 py-3.5 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-colors shadow-md flex items-center justify-center gap-2"
-                            >
-                                {isDeletingSpace ? <Loader2 size={18} className="animate-spin" /> : 'Yes, Delete'}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Folder Confirm */}
+            {folderToDelete && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="fixed inset-0 bg-[#1F2937]/40 backdrop-blur-sm transition-opacity" onClick={() => setFolderToDelete(null)} />
+                    <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 animate-fade-in-up z-10 text-center">
+                        <div className="w-16 h-16 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm border border-red-100"><Trash2 size={32} strokeWidth={2.5} /></div>
+                        <h2 className="text-2xl font-black text-[#1F2937] mb-3">Delete Folder?</h2>
+                        <p className="text-sm text-gray-500 font-medium mb-8 leading-relaxed">Are you sure you want to delete folder <strong className="text-[#1F2937] px-1">{folderToDelete.name}</strong>?<br />All projects inside it will be permanently lost.</p>
+                        <div className="flex gap-3">
+                            <button onClick={() => setFolderToDelete(null)} disabled={isDeleting} className="flex-1 px-5 py-3.5 bg-gray-50 text-gray-700 font-bold rounded-xl hover:bg-gray-100 transition-colors border border-gray-200">Cancel</button>
+                            <button onClick={handleDeleteFolder} disabled={isDeleting} className="flex-1 px-5 py-3.5 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-colors shadow-md flex items-center justify-center gap-2">
+                                {isDeleting ? <Loader2 size={18} className="animate-spin" /> : 'Yes, Delete'}
                             </button>
                         </div>
                     </div>

@@ -6,6 +6,7 @@ from uuid import UUID
 class TaskCreate(BaseModel):
     title: str
     project_id: UUID
+    parent_task_id: Optional[UUID] = None  # 👈 إضافة السطر ده
     description: Optional[str] = None
     status: str = "To Do"
     priority: str = "Medium"
@@ -20,7 +21,6 @@ class TaskResponse(TaskCreate):
     class Config:
         from_attributes = True
 
-# ضيفي ده في آخر الملف مكان الـ TaskUpdate القديم
 class TaskUpdate(BaseModel):
     title: Optional[str] = None
     status: Optional[str] = None
@@ -29,4 +29,5 @@ class TaskUpdate(BaseModel):
     description: Optional[str] = None
     start_date: Optional[date] = None
     due_date: Optional[date] = None
-    assignee_id: Optional[str] = None  # ضفنا السطر ده
+    assignee_id: Optional[str] = None
+    parent_task_id: Optional[str] = None

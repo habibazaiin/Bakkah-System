@@ -1,24 +1,29 @@
-// src/components/pmp/project/TaskDetailsSidebar.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import { X, AlignLeft, Calendar as CalendarIcon, Save, Loader2, Trash2, CalendarDays } from 'lucide-react';
 import { getStatusUI, getPriorityUI } from './TableView';
-import AssigneeSelect from './AssigneeSelect'; // استيراد زرار تعيين الأشخاص الجديد
+import AssigneeSelect from './AssigneeSelect';
 import TaskComments from './TaskComments';
 import TaskAttachments from './TaskAttachments';
 import TaskActivityLog from './TaskActivityLog';
+import TaskSubtasks from './TaskSubtasks';
+import { Task } from '@/types/pmp.types';
 
+// 🌟 التعديل هنا: ضفنا allTasks و refreshTasks للـ Props
 interface Props {
-    task: any | null;
+    task: Task | null;
     isOpen: boolean;
     onClose: () => void;
     onUpdate: (taskId: string, field: string, value: any) => Promise<void>;
     onDelete: (taskId: string) => void;
-    statuses: string[]; // ضفنا دي عشان نستقبل الحالات
+    statuses: string[];
+    allTasks: Task[];         // 👈 مهم جداً
+    refreshTasks: () => void; // 👈 مهم جداً
 }
 
-export default function TaskDetailsSidebar({ task, isOpen, onClose, onUpdate, onDelete, statuses }: Props) {
+// 🌟 التعديل هنا: استقبلناهم في الدالة
+export default function TaskDetailsSidebar({ task, isOpen, onClose, onUpdate, onDelete, statuses, allTasks, refreshTasks }: Props) {
     const [description, setDescription] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -26,7 +31,7 @@ export default function TaskDetailsSidebar({ task, isOpen, onClose, onUpdate, on
     useEffect(() => {
         if (task) {
             setDescription(task.description || '');
-            setShowDeleteConfirm(false); // ريستارت لرسالة المسح لو فتحنا مهمة جديدة
+            setShowDeleteConfirm(false);
         }
     }, [task]);
 
@@ -41,6 +46,9 @@ export default function TaskDetailsSidebar({ task, isOpen, onClose, onUpdate, on
             setIsSaving(false);
         }
     };
+
+    // 🌟 التعديل هنا: بنجيب المهام الفرعية بتاعة المهمة المفتوحة حالياً من الداتابيز مباشرة
+    const subtasks = allTasks.filter(t => t.parent_task_id === task.id);
 
     return (
         <div className="fixed inset-0 z-50 flex justify-end">
@@ -112,7 +120,7 @@ export default function TaskDetailsSidebar({ task, isOpen, onClose, onUpdate, on
                             </div>
                         </div>
 
-                        {/* Assignee - المكون الجديد */}
+                        {/* Assignee */}
                         <div className="grid grid-cols-3 items-center gap-4 pt-2 border-t border-gray-100">
                             <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Assignee</span>
                             <div className="col-span-2 relative z-20">
@@ -172,12 +180,22 @@ export default function TaskDetailsSidebar({ task, isOpen, onClose, onUpdate, on
                             </button>
                         </div>
                     </div>
+
+                    {/* 🌟 التعديل هنا: Subtasks Section */}
+                    <TaskSubtasks
+                        task={task}
+                        subtasks={subtasks}
+                        onSubtaskCreated={refreshTasks}
+                        onUpdateSubtask={(subId, status) => onUpdate(subId, 'status', status)}
+                    />
+
                     {/* Attachments Section */}
                     <TaskAttachments taskId={task.id} />
                     {/* Comments Section */}
                     <TaskComments taskId={task.id} />
                     {/* Activity Log Section */}
                     <TaskActivityLog taskId={task.id} />
+
                     {/* Delete Area - Custom UI */}
                     <div className="pt-4 mt-8 border-t border-red-100 pb-8">
                         {!showDeleteConfirm ? (
