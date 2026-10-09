@@ -11,16 +11,20 @@ import CreateProjectModal from '@/components/pmp/CreateProjectModal';
 import CreateFolderModal from '@/components/pmp/CreateFolderModal'; // 👈 استيراد مودال الفولدر
 import { LayoutDashboard, FolderKanban, Bell, Settings, Plus, Search, Layers, Loader2, ChevronRight, ChevronDown, Trash2, Folder as FolderIcon, Briefcase } from 'lucide-react';
 import { Space, Project, Folder } from '@/types/pmp.types';
+import SpaceSettingsModal from '@/components/pmp/SpaceSettingsModal';
+import { Settings2 } from 'lucide-react'; // ضيفي الأيقونة دي مع الـ lucide-react imports
+import NotificationsPopover from '@/components/pmp/NotificationsPopover';
 
 export default function PmpLayout({ children }: { children: React.ReactNode }) {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [isAuthLoading, setIsAuthLoading] = useState(true);
-    
+
     // Data States
     const [spaces, setSpaces] = useState<Space[]>([]);
     const [projects, setProjects] = useState<Project[]>([]);
     const [folders, setFolders] = useState<Folder[]>([]);
     const [isLoadingData, setIsLoadingData] = useState(false);
+    const [spaceForSettings, setSpaceForSettings] = useState<Space | null>(null);
 
     // Expansion States
     const [expandedSpaces, setExpandedSpaces] = useState<Record<string, boolean>>({});
@@ -31,7 +35,7 @@ export default function PmpLayout({ children }: { children: React.ReactNode }) {
     const [spaceIdForNewProject, setSpaceIdForNewProject] = useState<string | null>(null);
     const [folderIdForNewProject, setFolderIdForNewProject] = useState<string | null>(null);
     const [spaceIdForNewFolder, setSpaceIdForNewFolder] = useState<string | null>(null);
-    
+
     // Delete States
     const [spaceToDelete, setSpaceToDelete] = useState<Space | null>(null);
     const [folderToDelete, setFolderToDelete] = useState<Folder | null>(null);
@@ -47,7 +51,7 @@ export default function PmpLayout({ children }: { children: React.ReactNode }) {
                 PmpService.getSpaces(),
                 PmpService.getProjects()
             ]);
-            
+
             // جلب كل الفولدرات لكل الـ spaces
             const foldersPromises = fetchedSpaces.map(s => PmpService.getFolders(s.id).catch(() => []));
             const foldersArrays = await Promise.all(foldersPromises);
@@ -142,10 +146,7 @@ export default function PmpLayout({ children }: { children: React.ReactNode }) {
                     <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className={`p-3 rounded-2xl transition-all duration-300 ${isSidebarOpen ? 'bg-white/10 text-white' : 'text-white/50 hover:bg-white/5 hover:text-white'}`} title="Workspaces">
                         <FolderKanban size={22} strokeWidth={2} />
                     </button>
-                    <button className="p-3 text-white/50 hover:bg-white/5 hover:text-white rounded-2xl transition-all duration-300 relative" title="Notifications">
-                        <Bell size={22} strokeWidth={2} />
-                        <span className="absolute top-3 right-3.5 w-2 h-2 bg-[#B03052] rounded-full border border-[#12394D]"></span>
-                    </button>
+                    <NotificationsPopover />
                 </nav>
 
                 <div className="mt-auto flex flex-col gap-4 w-full items-center mb-2">
@@ -197,6 +198,7 @@ export default function PmpLayout({ children }: { children: React.ReactNode }) {
                                             </div>
                                             {/* Space Actions */}
                                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all shrink-0">
+                                                <button onClick={(e) => { e.stopPropagation(); setSpaceForSettings(space); }} className="text-gray-400 hover:text-purple-600 p-1.5 rounded-md hover:bg-purple-50 transition-all" title="Space Settings"><Settings2 size={16} strokeWidth={2.5} /></button>
                                                 <button onClick={(e) => { e.stopPropagation(); setSpaceIdForNewFolder(space.id); }} className="text-gray-400 hover:text-blue-600 p-1.5 rounded-md hover:bg-blue-50 transition-all" title="Add Folder"><FolderIcon size={14} strokeWidth={2.5} /></button>
                                                 <button onClick={(e) => { e.stopPropagation(); setSpaceIdForNewProject(space.id); setFolderIdForNewProject(null); }} className="text-gray-400 hover:text-[#3A7C15] p-1.5 rounded-md hover:bg-green-50 transition-all" title="Add Project"><Plus size={16} strokeWidth={3} /></button>
                                                 <button onClick={(e) => { e.stopPropagation(); setSpaceToDelete(space); }} className="text-gray-400 hover:text-[#B03052] p-1.5 rounded-md hover:bg-red-50 transition-all" title="Delete Space"><Trash2 size={16} strokeWidth={3} /></button>
@@ -205,12 +207,12 @@ export default function PmpLayout({ children }: { children: React.ReactNode }) {
 
                                         {isSpaceExpanded && (
                                             <div className="ml-5 pl-4 border-l border-gray-200 mt-2 space-y-2">
-                                                
+
                                                 {/* 1. Folders Render */}
                                                 {spaceFolders.map(folder => {
                                                     const isFolderExpanded = expandedFolders[folder.id];
                                                     const folderProjects = spaceProjects.filter(p => p.folder_id === folder.id);
-                                                    
+
                                                     return (
                                                         <div key={folder.id} className="mt-1">
                                                             <div onClick={(e) => toggleFolder(folder.id, e)} className="flex items-center justify-between px-2 py-1.5 rounded-lg cursor-pointer group hover:bg-gray-50 transition-colors">
@@ -288,20 +290,20 @@ export default function PmpLayout({ children }: { children: React.ReactNode }) {
 
             {/* Modals */}
             <CreateSpaceModal isOpen={isCreateSpaceModalOpen} onClose={() => setIsCreateSpaceModalOpen(false)} onSpaceCreated={fetchData} />
-            
-            <CreateFolderModal 
-                isOpen={!!spaceIdForNewFolder} 
-                onClose={() => setSpaceIdForNewFolder(null)} 
-                spaceId={spaceIdForNewFolder || ''} 
-                onFolderCreated={fetchData} 
+
+            <CreateFolderModal
+                isOpen={!!spaceIdForNewFolder}
+                onClose={() => setSpaceIdForNewFolder(null)}
+                spaceId={spaceIdForNewFolder || ''}
+                onFolderCreated={fetchData}
             />
 
-            <CreateProjectModal 
-                isOpen={!!spaceIdForNewProject} 
-                onClose={() => { setSpaceIdForNewProject(null); setFolderIdForNewProject(null); }} 
-                spaceId={spaceIdForNewProject || ''} 
+            <CreateProjectModal
+                isOpen={!!spaceIdForNewProject}
+                onClose={() => { setSpaceIdForNewProject(null); setFolderIdForNewProject(null); }}
+                spaceId={spaceIdForNewProject || ''}
                 folderId={folderIdForNewProject}
-                onProjectCreated={fetchData} 
+                onProjectCreated={fetchData}
             />
 
             {/* Delete Space Confirm */}
@@ -339,6 +341,11 @@ export default function PmpLayout({ children }: { children: React.ReactNode }) {
                     </div>
                 </div>
             )}
+            <SpaceSettingsModal
+                isOpen={!!spaceForSettings}
+                onClose={() => setSpaceForSettings(null)}
+                space={spaceForSettings}
+            />
         </div>
     );
 }

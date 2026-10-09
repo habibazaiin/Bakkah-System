@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import { Space, Project, Task, Comment, Attachment, Activity, Folder } from '@/types/pmp.types';
+import { Space, Project, Task, Comment, Attachment, Activity, Folder, Invitation, SpaceMember, AppNotification } from '@/types/pmp.types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/pmp';
 
@@ -153,7 +153,6 @@ export const PmpService = {
         return response.json();
     },
 
-    // جلب الفولدرات
     async getFolders(spaceId: string): Promise<Folder[]> {
         const headers = await this.getHeaders();
         const response = await fetch(`${API_URL}/folders/${spaceId}`, { headers });
@@ -161,7 +160,6 @@ export const PmpService = {
         return response.json();
     },
 
-    // إنشاء فولدر
     async createFolder(data: { name: string; space_id: string }): Promise<Folder> {
         const headers = await this.getHeaders();
         const response = await fetch(`${API_URL}/folders/`, {
@@ -192,4 +190,77 @@ export const PmpService = {
         if (!response.ok) throw new Error('Failed to create subtask');
         return response.json();
     },
+
+    // --- Members & Invitations ---
+    async getSpaceMembers(spaceId: string): Promise<SpaceMember[]> {
+        const headers = await this.getHeaders();
+        const response = await fetch(`${API_URL}/members/${spaceId}`, { headers });
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.detail || 'Failed to fetch members');
+        }
+        return response.json();
+    },
+
+    async addSpaceMember(data: { space_id: string; user_id: string; role: string }): Promise<SpaceMember> {
+        const headers = await this.getHeaders();
+        const response = await fetch(`${API_URL}/members/`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(data)
+        });
+        if (!response.ok) throw new Error('Failed to add member');
+        return response.json();
+    },
+
+    async inviteUser(data: { space_id: string; email: string; role: string }): Promise<Invitation> {
+        const headers = await this.getHeaders();
+        const response = await fetch(`${API_URL}/members/invite`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(data)
+        });
+
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.detail || 'Failed to send invitation');
+        }
+        return response.json();
+    },
+
+    async getSpaceInvitations(spaceId: string): Promise<Invitation[]> {
+        const headers = await this.getHeaders();
+        const response = await fetch(`${API_URL}/members/invite/${spaceId}`, { headers });
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.detail || 'Failed to fetch invitations');
+        }
+        return response.json();
+    },
+
+    async respondToInvitation(inviteId: string, action: 'accept' | 'decline'): Promise<{ message: string }> {
+        const headers = await this.getHeaders();
+        const response = await fetch(`${API_URL}/members/invite/${inviteId}/respond`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ action })
+        });
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.detail || 'Failed to process invitation');
+        }
+        return response.json();
+    },
+
+    async getNotifications(): Promise<AppNotification[]> {
+        const headers = await this.getHeaders();
+        const response = await fetch(`${API_URL}/members/notifications/all`, { headers });
+        if (!response.ok) return [];
+        return response.json();
+    },
+
+    async markNotificationsRead(): Promise<void> {
+        const headers = await this.getHeaders();
+        await fetch(`${API_URL}/members/notifications/read`, { method: 'PATCH', headers });
+    }
 };

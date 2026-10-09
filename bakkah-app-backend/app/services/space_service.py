@@ -19,8 +19,24 @@ class SpaceService:
     @staticmethod
     def get_spaces(user_id: str):
         try:
-            response = supabase.table("spaces").select("*").eq("owner_id", user_id).execute()
-            return response.data
+            # 1. جلب الـ Spaces اللي المستخدم هو المالك بتاعها
+            owner_spaces_res = supabase.table("spaces").select("*").eq("owner_id", user_id).execute()
+            owner_spaces = owner_spaces_res.data
+            
+            # 2. جلب الـ Spaces اللي المستخدم متضاف فيها كعضو
+            memberships_res = supabase.table("space_members").select("space_id").eq("user_id", user_id).execute()
+            member_space_ids = [m["space_id"] for m in memberships_res.data]
+            
+            member_spaces = []
+            if member_space_ids:
+                # جلب بيانات المساحات دي
+                member_spaces_res = supabase.table("spaces").select("*").in_("id", member_space_ids).execute()
+                member_spaces = member_spaces_res.data
+                
+            # 3. دمج الاتنين مع بعض بدون تكرار
+            all_spaces = {s["id"]: s for s in owner_spaces + member_spaces}.values()
+            
+            return list(all_spaces)
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))
 

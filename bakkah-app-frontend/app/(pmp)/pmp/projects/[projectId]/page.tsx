@@ -11,6 +11,7 @@ import MetricsView from '@/components/pmp/project/MetricsView';
 import GanttView from '@/components/pmp/project/GanttView';
 import TaskDetailsSidebar from '@/components/pmp/project/TaskDetailsSidebar';
 import { Task, Project } from '@/types/pmp.types';
+import { supabase } from '@/lib/supabase';
 
 type ViewType = 'table' | 'kanban' | 'gantt' | 'metrics' | 'ai';
 
@@ -46,6 +47,33 @@ export default function ProjectPage() {
 
     useEffect(() => {
         if (projectId) fetchData();
+    }, [projectId]);
+
+    // 🌟 السحر هنا: الاستماع للتحديثات اللحظية من Supabase
+    useEffect(() => {
+        if (!projectId) return;
+
+        const channel = supabase
+            .channel(`realtime-project-${projectId}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: '*', // استمع لأي حدث (INSERT, UPDATE, DELETE)
+                    schema: 'public',
+                    table: 'tasks',
+                    filter: `project_id=eq.${projectId}` // للمشروع ده بس
+                },
+                (payload) => {
+                    console.log('Realtime update received!', payload);
+                    fetchData(); // تحديث الداتا في الشاشة فوراً
+                }
+            )
+            .subscribe();
+
+        // تنظيف الاتصال لما اليوزر يخرج من الصفحة
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, [projectId]);
 
     const handleCreateTask = async (title: string) => {
@@ -103,9 +131,9 @@ export default function ProjectPage() {
                 return <TableView tasks={mainTasks} allTasks={tasks} isLoading={isLoadingData} onUpdate={handleUpdateTask} onCreate={handleCreateTask} isCreating={isCreatingTask} onTaskClick={setSelectedTask} statuses={project?.statuses || ['To Do', 'In Progress', 'Done']} />;
             case 'kanban':
                 return <KanbanView tasks={mainTasks} allTasks={tasks} isLoading={isLoadingData} onUpdate={handleUpdateTask} onTaskClick={setSelectedTask} statuses={project?.statuses || ['To Do', 'In Progress', 'Done']} onAddStatus={handleAddStatus} />;
-            case 'metrics': 
+            case 'metrics':
                 return <MetricsView tasks={mainTasks} isLoading={isLoadingData} />;
-            case 'gantt': 
+            case 'gantt':
                 return <GanttView tasks={mainTasks} isLoading={isLoadingData} onTaskClick={setSelectedTask} onUpdate={handleUpdateTask} />;
             case 'ai':
                 return (

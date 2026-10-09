@@ -70,3 +70,30 @@ export interface Activity {
     details?: string | null;
     created_at: string;
 }
+
+export interface SpaceMember {
+    id: string;
+    space_id: string;
+    user_id: string;
+    role: 'admin' | 'manager' | 'member' | 'guest';
+    created_at: string;
+}
+
+export interface Invitation {
+    id: string;
+    space_id: string;
+    email: string;
+    role: string;
+    status: string;
+    created_by: string;
+    created_at: string;
+}
+
+export interface AppNotification {
+    id: string;
+    user_id: string;
+    title: string;
+    message: string;
+    is_read: boolean;
+    created_at: string;
+}
