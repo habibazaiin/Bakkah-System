@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Loader2, Plus, LayoutList } from 'lucide-react';
 import { getPriorityUI } from './TableView';
-import { TEAM_MEMBERS } from '@/constants/team';
 import { Task } from '@/types/pmp.types';
+import { PmpService } from '@/services/pmp.service';
 
 interface KanbanProps {
     tasks: Task[];
@@ -19,10 +19,34 @@ interface KanbanProps {
 export default function KanbanView({ tasks, allTasks = [], isLoading, onUpdate, onTaskClick, statuses, onAddStatus }: KanbanProps) {
     const [isAddingColumn, setIsAddingColumn] = useState(false);
     const [newColumnName, setNewColumnName] = useState('');
+    
+    // 🌟 الداتا الحقيقية للكانبن
+    const [members, setMembers] = useState<any[]>([]);
+    const [teams, setTeams] = useState<any[]>([]);
 
-    if (isLoading) {
-        return <div className="flex justify-center p-10"><Loader2 className="w-8 h-8 text-[#1E5A7A] animate-spin" /></div>;
-    }
+    useEffect(() => {
+        const fetchAssignees = async () => {
+            if (!tasks || tasks.length === 0) return;
+            try {
+                const projectId = tasks[0].project_id;
+                const projects = await PmpService.getProjects();
+                const project = projects.find(p => p.id === projectId);
+                if (project) {
+                    const [fetchedMembers, fetchedTeams] = await Promise.all([
+                        PmpService.getWorkspaceUsers(project.space_id),
+                        PmpService.getSpaceTeams(project.space_id)
+                    ]);
+                    setMembers(fetchedMembers || []);
+                    setTeams(fetchedTeams || []);
+                }
+            } catch (error) {
+                console.error("Error fetching assignees", error);
+            }
+        };
+        fetchAssignees();
+    }, [tasks.length]);
+
+    if (isLoading) return <div className="flex justify-center p-10"><Loader2 className="w-8 h-8 text-[#1E5A7A] animate-spin" /></div>;
 
     const handleDragStart = (e: React.DragEvent, taskId: string) => e.dataTransfer.setData('taskId', taskId);
     const handleDragOver = (e: React.DragEvent) => e.preventDefault();
@@ -43,18 +67,18 @@ export default function KanbanView({ tasks, allTasks = [], isLoading, onUpdate, 
         }
     };
 
+    const getInitials = (name: string) => name?.substring(0, 2).toUpperCase() || 'UN';
+    const getColor = (id: string) => {
+        const colors = ['bg-purple-100 text-purple-700', 'bg-blue-100 text-blue-700', 'bg-green-100 text-green-700', 'bg-orange-100 text-orange-700', 'bg-pink-100 text-pink-700'];
+        return colors[(id?.charCodeAt(0) || 0) % colors.length];
+    };
+
     return (
         <div className="flex gap-6 overflow-x-auto pb-4 hide-scrollbar min-h-[500px] animate-fade-in-up items-start">
             {statuses.map((column: string) => {
                 const columnTasks = tasks.filter((t) => t.status === column);
-
                 return (
-                    <div 
-                        key={column} 
-                        className="flex-1 min-w-[320px] bg-gray-50/80 rounded-3xl p-5 border border-gray-100 flex flex-col transition-colors hover:bg-gray-50"
-                        onDragOver={handleDragOver}
-                        onDrop={(e) => handleDrop(e, column)}
-                    >
+                    <div key={column} className="flex-1 min-w-[320px] bg-gray-50/80 rounded-3xl p-5 border border-gray-100 flex flex-col transition-colors hover:bg-gray-50" onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, column)}>
                         <div className="flex items-center justify-between mb-5 px-1">
                             <h3 className="font-black text-[#1F2937] text-sm uppercase tracking-wider">{column}</h3>
                             <span className="bg-white text-gray-500 text-xs font-bold px-3 py-1 rounded-full border border-gray-200 shadow-sm">{columnTasks.length}</span>
@@ -62,24 +86,16 @@ export default function KanbanView({ tasks, allTasks = [], isLoading, onUpdate, 
 
                         <div className="flex flex-col gap-3 flex-1">
                             {columnTasks.map((task) => {
-                                const assignee = TEAM_MEMBERS.find((m) => m.id === task.assignee_id);
+                                const assignee = members.find((m: any) => m.user_id === task.assignee_id);
+                                const team = teams.find((t: any) => t.id === task.team_id);
                                 
-                                // 🌟 استخراج وعرض تقدم المهام الفرعية على الكارت
                                 const subtasks = allTasks.filter(t => t.parent_task_id === task.id);
                                 const completedSubtasks = subtasks.filter(t => t.status === 'Done').length;
                                 const progressPercent = subtasks.length > 0 ? Math.round((completedSubtasks / subtasks.length) * 100) : 0;
 
                                 return (
-                                    <div 
-                                        key={task.id}
-                                        draggable
-                                        onDragStart={(e) => handleDragStart(e, task.id)}
-                                        onClick={() => onTaskClick(task)}
-                                        className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md hover:border-[#1E5A7A]/30 transition-all cursor-grab active:cursor-grabbing group"
-                                    >
-                                        <h4 className="font-bold text-sm text-[#1F2937] group-hover:text-[#1E5A7A] transition-colors mb-3 line-clamp-2 leading-relaxed">
-                                            {task.title}
-                                        </h4>
+                                    <div key={task.id} draggable onDragStart={(e) => handleDragStart(e, task.id)} onClick={() => onTaskClick(task)} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md hover:border-[#1E5A7A]/30 transition-all cursor-grab active:cursor-grabbing group">
+                                        <h4 className="font-bold text-sm text-[#1F2937] group-hover:text-[#1E5A7A] transition-colors mb-3 line-clamp-2 leading-relaxed">{task.title}</h4>
 
                                         {subtasks.length > 0 && (
                                             <div className="mb-4">
@@ -96,20 +112,23 @@ export default function KanbanView({ tasks, allTasks = [], isLoading, onUpdate, 
                                         <div className="flex items-center justify-between pt-3 border-t border-gray-50">
                                             <div className="flex items-center gap-2">
                                                 {getPriorityUI(task.priority)}
-                                                {assignee && (
-                                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black border border-white shadow-sm ${assignee.color}`} title={assignee.name}>
-                                                        {assignee.initials}
+                                                
+                                                {/* 🌟 عرض أول حرفين 🌟 */}
+                                                {task.team_id && team ? (
+                                                    <div className="w-7 h-7 rounded-md bg-[#1E5A7A]/10 text-[#1E5A7A] flex items-center justify-center text-[10px] font-black border border-white shadow-sm" title={team.name}>
+                                                        {getInitials(team.name)}
                                                     </div>
-                                                )}
+                                                ) : task.assignee_id && assignee ? (
+                                                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black border border-white shadow-sm ${getColor(assignee.user_id)}`} title={assignee.name}>
+                                                        {getInitials(assignee.name)}
+                                                    </div>
+                                                ) : null}
                                             </div>
                                         </div>
                                     </div>
                                 );
                             })}
-                            
-                            {columnTasks.length === 0 && (
-                                <div className="flex-1 border-2 border-dashed border-gray-200 rounded-2xl flex items-center justify-center p-6 text-gray-400 text-sm font-medium bg-white/50">Drop tasks here</div>
-                            )}
+                            {columnTasks.length === 0 && <div className="flex-1 border-2 border-dashed border-gray-200 rounded-2xl flex items-center justify-center p-6 text-gray-400 text-sm font-medium bg-white/50">Drop tasks here</div>}
                         </div>
                     </div>
                 );
@@ -117,14 +136,7 @@ export default function KanbanView({ tasks, allTasks = [], isLoading, onUpdate, 
 
             {isAddingColumn ? (
                 <div className="min-w-[320px] bg-white rounded-3xl p-5 border-2 border-[#1E5A7A]/30 shadow-sm flex flex-col justify-center animate-fade-in-up">
-                    <input
-                        autoFocus
-                        value={newColumnName}
-                        onChange={(e) => setNewColumnName(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === 'Enter') handleSaveNewColumn(); }}
-                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-[#1F2937] focus:outline-none focus:border-[#1E5A7A] focus:ring-2 focus:ring-[#1E5A7A]/10 mb-3"
-                        placeholder="Status name (e.g. Testing)"
-                    />
+                    <input autoFocus value={newColumnName} onChange={(e) => setNewColumnName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleSaveNewColumn(); }} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-[#1F2937] focus:outline-none focus:border-[#1E5A7A] focus:ring-2 focus:ring-[#1E5A7A]/10 mb-3" placeholder="Status name (e.g. Testing)" />
                     <div className="flex gap-2">
                         <button onClick={handleSaveNewColumn} className="flex-1 bg-[#1E5A7A] hover:bg-[#154560] text-white text-xs font-bold py-2.5 rounded-xl transition-colors shadow-sm">Save</button>
                         <button onClick={() => setIsAddingColumn(false)} className="flex-1 bg-white hover:bg-gray-50 border border-gray-200 text-gray-600 text-xs font-bold py-2.5 rounded-xl transition-colors">Cancel</button>

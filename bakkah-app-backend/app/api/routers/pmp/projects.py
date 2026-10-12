@@ -20,3 +20,8 @@ async def get_projects(current_user = Depends(get_current_user)):
 async def update_project(project_id: str, project: ProjectUpdate, current_user = Depends(get_current_user)):
     update_data = {k: v for k, v in project.model_dump().items() if v is not None}
     return ProjectService.update_project(project_id, update_data)
+
+@router.delete("/{project_id}")
+async def delete_project(project_id: str, current_user = Depends(get_current_user)):
+    ProjectService.delete_project(project_id)
+    return {"message": "Project deleted successfully"}

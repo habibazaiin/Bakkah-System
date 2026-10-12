@@ -17,6 +17,7 @@ class InvitationResponse(InvitationCreate):
     id: UUID
     status: str
     created_by: UUID
+    token: Optional[UUID] = None
     created_at: datetime
 
     class Config:

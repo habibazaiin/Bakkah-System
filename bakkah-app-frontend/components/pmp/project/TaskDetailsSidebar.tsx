@@ -125,8 +125,11 @@ export default function TaskDetailsSidebar({ task, isOpen, onClose, onUpdate, on
                             <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Assignee</span>
                             <div className="col-span-2 relative z-20">
                                 <AssigneeSelect
-                                    selectedUserId={task.assignee_id}
-                                    onAssign={(userId) => onUpdate(task.id, 'assignee_id', userId)}
+                                    taskId={task.id}
+                                    projectId={task.project_id}
+                                    currentAssigneeId={task.assignee_id}
+                                    currentTeamId={task.team_id}
+                                    onUpdate={onUpdate}
                                 />
                             </div>
                         </div>

@@ -49,32 +49,56 @@ export default function ProjectPage() {
         if (projectId) fetchData();
     }, [projectId]);
 
-    // 🌟 السحر هنا: الاستماع للتحديثات اللحظية من Supabase
+    // 🌟 Real-time شامل للمشروع بالأسماء الصحيحة
     useEffect(() => {
         if (!projectId) return;
 
-        const channel = supabase
-            .channel(`realtime-project-${projectId}`)
+        const projectChannel = supabase
+            .channel(`project-live-${projectId}`)
             .on(
                 'postgres_changes',
                 {
-                    event: '*', // استمع لأي حدث (INSERT, UPDATE, DELETE)
+                    event: '*',
                     schema: 'public',
                     table: 'tasks',
-                    filter: `project_id=eq.${projectId}` // للمشروع ده بس
+                    filter: `project_id=eq.${projectId}`
                 },
-                (payload) => {
-                    console.log('Realtime update received!', payload);
-                    fetchData(); // تحديث الداتا في الشاشة فوراً
+                () => {
+                    fetchData(); // تحديث المهام فوراً
+                }
+            )
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'task_comments' // 👈 اتعدلت هنا
+                },
+                () => {
+                    fetchData(); // تحديث لو حد كتب كومنت
                 }
             )
             .subscribe();
 
-        // تنظيف الاتصال لما اليوزر يخرج من الصفحة
         return () => {
-            supabase.removeChannel(channel);
+            supabase.removeChannel(projectChannel);
         };
     }, [projectId]);
+
+    // 🌟 ده هيخلي الشاشة الجانبية (Task Details) تتحدث فوراً عند اليوزر التاني لو كان فاتحها
+    useEffect(() => {
+        if (selectedTask) {
+            const updatedTask = tasks.find(t => t.id === selectedTask.id);
+            // لو التأسك اتحدثت في الخلفية، حدث الشاشة المفتوحة
+            if (updatedTask && JSON.stringify(updatedTask) !== JSON.stringify(selectedTask)) {
+                setSelectedTask(updatedTask);
+            }
+            // لو التأسك اتمسحت من اليوزر التاني، اقفل الشاشة
+            if (!updatedTask && tasks.length > 0) {
+                setSelectedTask(null);
+            }
+        }
+    }, [tasks, selectedTask]);
 
     const handleCreateTask = async (title: string) => {
         setIsCreatingTask(true);

@@ -38,6 +38,7 @@ export interface Task {
     start_date?: string;
     due_date?: string;
     assignee_id?: string;
+    team_id?: string; // 🌟 السطر السحري اللي كان ناقص عشان الفرونت إند يحس بالفريق
     progress: number;
     created_at: string;
     updated_at?: string;
@@ -75,7 +76,7 @@ export interface SpaceMember {
     id: string;
     space_id: string;
     user_id: string;
-    role: 'admin' | 'manager' | 'member' | 'guest';
+    role: 'owner' | 'admin' | 'manager' | 'member' | 'guest';
     created_at: string;
 }
 
@@ -96,4 +97,13 @@ export interface AppNotification {
     message: string;
     is_read: boolean;
     created_at: string;
+}
+
+export interface SpaceTeam {
+    id: string;
+    space_id: string;
+    name: string;
+    description: string;
+    created_at: string;
+    members: string[]; // مصفوفة فيها الـ user_ids بتاعة أعضاء الفريق
 }

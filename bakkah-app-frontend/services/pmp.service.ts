@@ -16,7 +16,10 @@ export const PmpService = {
     async getSpaces(): Promise<Space[]> {
         const headers = await this.getHeaders();
         const response = await fetch(`${API_URL}/spaces/`, { method: 'GET', headers });
-        if (!response.ok) throw new Error('Failed to fetch spaces');
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.detail || 'Failed to fetch spaces');
+        }
         return response.json();
     },
 
@@ -100,6 +103,13 @@ export const PmpService = {
             body: JSON.stringify(data)
         });
         if (!response.ok) throw new Error('Failed to update project');
+        return response.json();
+    },
+
+    async deleteProject(projectId: string): Promise<{ message: string }> {
+        const headers = await this.getHeaders();
+        const response = await fetch(`${API_URL}/projects/${projectId}`, { method: 'DELETE', headers });
+        if (!response.ok) throw new Error('Failed to delete project');
         return response.json();
     },
 
@@ -238,29 +248,113 @@ export const PmpService = {
         return response.json();
     },
 
-    async respondToInvitation(inviteId: string, action: 'accept' | 'decline'): Promise<{ message: string }> {
+    // ضيفي دي جوه PmpService
+    async respondToInvitation(tokenId: string, action: 'accept' | 'decline'): Promise<any> {
         const headers = await this.getHeaders();
-        const response = await fetch(`${API_URL}/members/invite/${inviteId}/respond`, {
+        const response = await fetch(`${API_URL}/members/invitations/${tokenId}/respond`, {
             method: 'POST',
-            headers,
+            headers: { ...headers, 'Content-Type': 'application/json' },
             body: JSON.stringify({ action })
         });
         if (!response.ok) {
-            const err = await response.json().catch(() => ({}));
-            throw new Error(err.detail || 'Failed to process invitation');
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to respond to invitation');
         }
         return response.json();
     },
 
     async getNotifications(): Promise<AppNotification[]> {
-        const headers = await this.getHeaders();
-        const response = await fetch(`${API_URL}/members/notifications/all`, { headers });
-        if (!response.ok) return [];
-        return response.json();
+        try {
+            const headers = await this.getHeaders();
+            const response = await fetch(`${API_URL}/members/notifications/all`, { headers });
+            if (!response.ok) return [];
+            return await response.json();
+        } catch (error) {
+            console.error("Notifications fetch error:", error);
+            return []; // إرجاع مصفوفة فارغة بدل ضرب الإيرور
+        }
     },
 
     async markNotificationsRead(): Promise<void> {
         const headers = await this.getHeaders();
         await fetch(`${API_URL}/members/notifications/read`, { method: 'PATCH', headers });
+    },
+
+    async getWorkspaceUsers(spaceId: string): Promise<any[]> {
+        const headers = await this.getHeaders();
+        const response = await fetch(`${API_URL}/members/workspace-users/${spaceId}`, { headers });
+        if (!response.ok) return [];
+        return response.json();
+    },
+
+    async updateMemberRole(spaceId: string, userId: string, role: string): Promise<any> {
+        const headers = await this.getHeaders();
+        const response = await fetch(`${API_URL}/members/${spaceId}/${userId}/role`, {
+            method: 'PATCH',
+            headers: { ...headers, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ role })
+        });
+        if (!response.ok) throw new Error('Failed to update role');
+        return response.json();
+    },
+
+    async removeMember(spaceId: string, userId: string): Promise<any> {
+        const headers = await this.getHeaders();
+        const response = await fetch(`${API_URL}/members/${spaceId}/${userId}`, {
+            method: 'DELETE',
+            headers
+        });
+        if (!response.ok) throw new Error('Failed to remove member');
+        return response.json();
+    },
+
+    // === Teams Management ===
+    async getSpaceTeams(spaceId: string): Promise<any[]> {
+        const headers = await this.getHeaders();
+        const response = await fetch(`${API_URL}/teams/${spaceId}`, { headers });
+        if (!response.ok) throw new Error('Failed to fetch teams');
+        return response.json();
+    },
+
+    async createTeam(data: { space_id: string, name: string, description: string }): Promise<any> {
+        const headers = await this.getHeaders();
+        const response = await fetch(`${API_URL}/teams/`, {
+            method: 'POST',
+            headers: { ...headers, 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to create team');
+        }
+        return response.json();
+    },
+
+    async deleteTeam(spaceId: string, teamId: string): Promise<any> {
+        const headers = await this.getHeaders();
+        const response = await fetch(`${API_URL}/teams/${spaceId}/${teamId}`, { method: 'DELETE', headers });
+        if (!response.ok) throw new Error('Failed to delete team');
+        return response.json();
+    },
+
+    async addTeamMember(spaceId: string, teamId: string, userId: string): Promise<any> {
+        const headers = await this.getHeaders();
+        const response = await fetch(`${API_URL}/teams/${spaceId}/${teamId}/members`, {
+            method: 'POST',
+            headers: { ...headers, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId })
+        });
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to add member to team');
+        }
+        return response.json();
+    },
+
+    async removeTeamMember(spaceId: string, teamId: string, userId: string): Promise<any> {
+        const headers = await this.getHeaders();
+        const response = await fetch(`${API_URL}/teams/${spaceId}/${teamId}/members/${userId}`, { method: 'DELETE', headers });
+        if (!response.ok) throw new Error('Failed to remove member from team');
+        return response.json();
     }
 };

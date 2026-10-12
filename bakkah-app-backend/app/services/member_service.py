@@ -11,16 +11,33 @@ class MemberService:
 
     @staticmethod
     def create_invitation(data: InvitationCreate, user_id: str, background_tasks):
+        space_id_str = str(data.space_id)
+        
+        # 1. فحص هل فيه دعوة قديمة لنفس الإيميل في نفس الـ Space
+        existing_invite = supabase.table("invitations").select("*").eq("space_id", space_id_str).eq("email", data.email).execute()
+        
+        if existing_invite.data:
+            old_invite = existing_invite.data[0]
+            # لو الدعوة لسه متعلقة، نمنع التكرار
+            if old_invite["status"] == "pending":
+                raise HTTPException(status_code=400, detail="Invitation already pending for this email.")
+            else:
+                # لو كان قابلها قبل كده أو رفضها (يعني اتمسح من الـ Space)، نمسح السجل القديم عشان نبعت جديد
+                supabase.table("invitations").delete().eq("id", old_invite["id"]).execute()
+
+        # 2. إنشاء الدعوة الجديدة
         dump = data.model_dump()
-        dump["space_id"] = str(dump["space_id"])
+        dump["space_id"] = space_id_str
         dump["created_by"] = user_id
         
         try:
             response = supabase.table("invitations").insert(dump).execute()
             invite = response.data[0]
             
-            # تجهيز الإيميل وإرساله في الخلفية (عشان ميعطلش الـ API)
-            invite_link = f"http://localhost:3000/pmp/invitations/{invite['id']}"
+            invite_token = invite.get("token") or invite["id"] 
+            invite_link = f"http://localhost:3000/pmp/invitations/{invite_token}"
+            
+            # إرسال الإيميل
             html_body = f"""
             <h3>You have been invited!</h3>
             <p>You have been invited to join a workspace on Bakkah PMP as a <b>{data.role}</b>.</p>
