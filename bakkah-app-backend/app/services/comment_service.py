@@ -13,15 +13,45 @@ class CommentService:
             }
             response = supabase.table("task_comments").insert(data).execute()
             ActivityService.log_activity(task_id, user_id, "added a comment", content)
-            return response.data[0] if response.data else None
+            
+            new_comment = response.data[0] if response.data else None
+            
+            # عشان لما نضيف كومنت جديد يرجع ببيانات اليوزر فوراً والفرونت إند يعرضه بالاسم
+            if new_comment:
+                profile_res = supabase.table("profiles").select("id, username, email").eq("id", user_id).execute()
+                new_comment["profiles"] = profile_res.data[0] if profile_res.data else {}
+                
+            return new_comment
         except Exception as e:
+            import traceback
+            print(f"🔥 COMMENTS ERROR: {str(e)}")
+            traceback.print_exc() # ده هيطبع تفاصيل الإيرور بالكامل
             raise HTTPException(status_code=400, detail=str(e))
 
     @staticmethod
     def get_task_comments(task_id: str):
         try:
-            # جلب التعليقات مرتبة من الأقدم للأحدث
-            response = supabase.table("task_comments").select("*").eq("task_id", task_id).order("created_at", desc=False).execute()
-            return response.data
+            # 1. جلب التعليقات مرتبة
+            res = supabase.table("task_comments").select("*").eq("task_id", task_id).order("created_at").execute()
+            comments = res.data
+            if not comments:
+                return []
+
+            # 2. تجميع معرفات المستخدمين
+            user_ids = list(set([c["user_id"] for c in comments if c.get("user_id")]))
+            
+            # 3. جلب بيانات البروفايل ودمجها (Manual Join)
+            if user_ids:
+                profiles_res = supabase.table("profiles").select("id, username, email").in_("id", user_ids).execute()
+                profiles_map = {p["id"]: p for p in profiles_res.data}
+                
+                for c in comments:
+                    user_id = c.get("user_id")
+                    c["profiles"] = profiles_map.get(user_id, {})
+                    
+            return comments
         except Exception as e:
+            import traceback
+            print(f"🔥 COMMENTS ERROR: {str(e)}")
+            traceback.print_exc() # ده هيطبع تفاصيل الإيرور بالكامل
             raise HTTPException(status_code=400, detail=str(e))

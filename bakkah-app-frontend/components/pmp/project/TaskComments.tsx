@@ -3,11 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { Send, Loader2, MessageSquare } from 'lucide-react';
 import { PmpService } from '@/services/pmp.service';
-import { TEAM_MEMBERS } from '@/constants/team';
-import { Comment } from '@/types/pmp.types';
 
 export default function TaskComments({ taskId }: { taskId: string }) {
-    const [comments, setComments] = useState<Comment[]>([]);
+    const [comments, setComments] = useState<any[]>([]);
     const [newComment, setNewComment] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -16,7 +14,7 @@ export default function TaskComments({ taskId }: { taskId: string }) {
         const fetchComments = async () => {
             try {
                 const data = await PmpService.getTaskComments(taskId);
-                setComments(data);
+                setComments(data || []);
             } catch (error) {
                 console.error("Error fetching comments:", error);
             } finally {
@@ -33,6 +31,7 @@ export default function TaskComments({ taskId }: { taskId: string }) {
         setIsSubmitting(true);
         try {
             const addedComment = await PmpService.addComment(taskId, newComment.trim());
+            // إضافة التعليق الجديد للداتا اللي معروضة
             setComments((prev) => [...prev, addedComment]);
             setNewComment('');
         } catch (error) {
@@ -42,6 +41,16 @@ export default function TaskComments({ taskId }: { taskId: string }) {
         }
     };
 
+    const getUserInfo = (comment: any) => {
+        // 🌟 بنقرأ الداتا من الكائن المتداخل profiles اللي جاي من الباك إند
+        const p = comment.profiles || {};
+        const name = p.username || p.email || 'System'; // أو 'Unknown User' في الكومنتات
+        const initials = name.substring(0, 2).toUpperCase();
+        const colors = ['bg-purple-100 text-purple-700', 'bg-blue-100 text-blue-700', 'bg-green-100 text-green-700', 'bg-orange-100 text-orange-700', 'bg-pink-100 text-pink-700'];
+        const color = colors[(comment.user_id?.charCodeAt(0) || 0) % colors.length];
+        return { name, initials, color };
+    };
+
     return (
         <div className="mt-8 pt-6 border-t border-gray-100">
             <div className="flex items-center gap-2 mb-4">
@@ -49,7 +58,6 @@ export default function TaskComments({ taskId }: { taskId: string }) {
                 <h3 className="font-extrabold text-[#1F2937]">Comments</h3>
             </div>
 
-            {/* عرض التعليقات */}
             <div className="space-y-4 mb-6">
                 {isLoading ? (
                     <div className="flex justify-center py-4"><Loader2 size={20} className="animate-spin text-[#1E5A7A]" /></div>
@@ -57,7 +65,7 @@ export default function TaskComments({ taskId }: { taskId: string }) {
                     <p className="text-sm text-gray-400 font-medium text-center py-4">No comments yet. Start the conversation!</p>
                 ) : (
                     comments.map((comment) => {
-                        const user = TEAM_MEMBERS.find((m) => m.id === comment.user_id) || { name: 'User', initials: 'U', color: 'bg-gray-100 text-gray-600' };
+                        const user = getUserInfo(comment);
 
                         return (
                             <div key={comment.id} className="flex gap-3 animate-fade-in-up">
@@ -79,7 +87,6 @@ export default function TaskComments({ taskId }: { taskId: string }) {
                 )}
             </div>
 
-            {/* كتابة تعليق */}
             <form onSubmit={handleSubmit} className="relative">
                 <textarea
                     value={newComment}

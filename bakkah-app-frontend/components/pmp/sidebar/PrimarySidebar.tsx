@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { LayoutDashboard, FolderKanban, Settings } from 'lucide-react';
+import { LayoutDashboard, FolderKanban, Settings, CheckSquare } from 'lucide-react';
 import NotificationsPopover from '@/components/pmp/NotificationsPopover';
 
 interface Props {
@@ -23,6 +23,12 @@ export default function PrimarySidebar({ isSidebarOpen, setIsSidebarOpen, pathna
                 <Link href="/pmp" className={`p-3 rounded-2xl shadow-sm transition-all duration-300 ${pathname === '/pmp' ? 'bg-white/10 text-white' : 'text-white/50 hover:bg-white/5 hover:text-white'}`} title="Dashboard">
                     <LayoutDashboard size={22} strokeWidth={2} />
                 </Link>
+
+                {/* 🌟 زرار مهامي (My Tasks) الجديد 🌟 */}
+                <Link href="/pmp/my-tasks" className={`p-3 rounded-2xl shadow-sm transition-all duration-300 ${pathname === '/pmp/my-tasks' ? 'bg-white/10 text-white' : 'text-white/50 hover:bg-white/5 hover:text-white'}`} title="My Tasks">
+                    <CheckSquare size={22} strokeWidth={2} />
+                </Link>
+
                 <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className={`p-3 rounded-2xl transition-all duration-300 ${isSidebarOpen ? 'bg-white/10 text-white' : 'text-white/50 hover:bg-white/5 hover:text-white'}`} title="Workspaces">
                     <FolderKanban size={22} strokeWidth={2} />
                 </button>

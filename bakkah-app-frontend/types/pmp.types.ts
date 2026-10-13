@@ -76,6 +76,8 @@ export interface SpaceMember {
     id: string;
     space_id: string;
     user_id: string;
+    name?: string;  
+    email?: string;
     role: 'owner' | 'admin' | 'manager' | 'member' | 'guest';
     created_at: string;
 }

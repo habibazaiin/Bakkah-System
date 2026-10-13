@@ -10,7 +10,6 @@ import TaskActivityLog from './TaskActivityLog';
 import TaskSubtasks from './TaskSubtasks';
 import { Task } from '@/types/pmp.types';
 
-// 🌟 التعديل هنا: ضفنا allTasks و refreshTasks للـ Props
 interface Props {
     task: Task | null;
     isOpen: boolean;
@@ -18,20 +17,25 @@ interface Props {
     onUpdate: (taskId: string, field: string, value: any) => Promise<void>;
     onDelete: (taskId: string) => void;
     statuses: string[];
-    allTasks: Task[];         // 👈 مهم جداً
-    refreshTasks: () => void; // 👈 مهم جداً
+    allTasks: Task[];
+    refreshTasks: () => void;
 }
 
-// 🌟 التعديل هنا: استقبلناهم في الدالة
 export default function TaskDetailsSidebar({ task, isOpen, onClose, onUpdate, onDelete, statuses, allTasks, refreshTasks }: Props) {
     const [description, setDescription] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+    // 🌟 State للقوائم المنسدلة الجديدة
+    const [isStatusOpen, setIsStatusOpen] = useState(false);
+    const [isPriorityOpen, setIsPriorityOpen] = useState(false);
+
     useEffect(() => {
         if (task) {
             setDescription(task.description || '');
             setShowDeleteConfirm(false);
+            setIsStatusOpen(false);
+            setIsPriorityOpen(false);
         }
     }, [task]);
 
@@ -47,7 +51,6 @@ export default function TaskDetailsSidebar({ task, isOpen, onClose, onUpdate, on
         }
     };
 
-    // 🌟 التعديل هنا: بنجيب المهام الفرعية بتاعة المهمة المفتوحة حالياً من الداتابيز مباشرة
     const subtasks = allTasks.filter(t => t.parent_task_id === task.id);
 
     return (
@@ -78,52 +81,62 @@ export default function TaskDetailsSidebar({ task, isOpen, onClose, onUpdate, on
                     {/* Properties Grid */}
                     <div className="bg-gray-50/50 p-5 rounded-2xl border border-gray-100 space-y-4">
 
-                        {/* Status */}
-                        <div className="grid grid-cols-3 items-center gap-4">
+                        {/* 🌟 Custom Status Dropdown 🌟 */}
+                        <div className="grid grid-cols-3 items-center gap-4 relative z-40">
                             <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Status</span>
-                            <div className="col-span-2">
-                                <div className="relative group/select w-fit">
-                                    <select
-                                        value={task.status}
-                                        onChange={(e) => onUpdate(task.id, 'status', e.target.value)}
-                                        className="appearance-none bg-transparent font-bold text-xs cursor-pointer focus:outline-none absolute inset-0 w-full h-full opacity-0 z-10"
-                                    >
-                                        {statuses.map(s => (
-                                            <option key={s} value={s}>{s}</option>
-                                        ))}
-                                    </select>
-                                    <div className="pointer-events-none group-hover/select:opacity-80 transition-opacity">
-                                        {getStatusUI(task.status)}
-                                    </div>
+                            <div className="col-span-2 relative">
+                                <div onClick={() => setIsStatusOpen(!isStatusOpen)} className="cursor-pointer w-fit hover:opacity-80 transition-opacity">
+                                    {getStatusUI(task.status)}
                                 </div>
+                                {isStatusOpen && (
+                                    <>
+                                        <div className="fixed inset-0 z-30" onClick={() => setIsStatusOpen(false)} />
+                                        <div className="absolute top-full left-0 mt-2 w-48 bg-white border border-gray-100 rounded-xl shadow-xl z-50 py-2 animate-fade-in-up">
+                                            {statuses.map(s => (
+                                                <div
+                                                    key={s}
+                                                    onClick={() => { onUpdate(task.id, 'status', s); setIsStatusOpen(false); }}
+                                                    className="px-4 py-2 cursor-pointer hover:bg-gray-50 flex items-center transition-colors"
+                                                >
+                                                    {getStatusUI(s)}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         </div>
 
-                        {/* Priority */}
-                        <div className="grid grid-cols-3 items-center gap-4">
+                        {/* 🌟 Custom Priority Dropdown 🌟 */}
+                        <div className="grid grid-cols-3 items-center gap-4 relative z-30">
                             <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Priority</span>
-                            <div className="col-span-2">
-                                <div className="relative group/select w-fit">
-                                    <select
-                                        value={task.priority}
-                                        onChange={(e) => onUpdate(task.id, 'priority', e.target.value)}
-                                        className="appearance-none bg-transparent font-bold text-xs cursor-pointer focus:outline-none absolute inset-0 w-full h-full opacity-0 z-10"
-                                    >
-                                        <option value="Low">Low</option>
-                                        <option value="Medium">Medium</option>
-                                        <option value="High">High</option>
-                                    </select>
-                                    <div className="pointer-events-none group-hover/select:opacity-80 transition-opacity">
-                                        {getPriorityUI(task.priority)}
-                                    </div>
+                            <div className="col-span-2 relative">
+                                <div onClick={() => setIsPriorityOpen(!isPriorityOpen)} className="cursor-pointer w-fit hover:opacity-80 transition-opacity">
+                                    {getPriorityUI(task.priority)}
                                 </div>
+                                {isPriorityOpen && (
+                                    <>
+                                        <div className="fixed inset-0 z-30" onClick={() => setIsPriorityOpen(false)} />
+                                        <div className="absolute top-full left-0 mt-2 w-40 bg-white border border-gray-100 rounded-xl shadow-xl z-50 py-2 animate-fade-in-up">
+                                            {['Low', 'Medium', 'High'].map(p => (
+                                                <div
+                                                    key={p}
+                                                    onClick={() => { onUpdate(task.id, 'priority', p); setIsPriorityOpen(false); }}
+                                                    className="px-4 py-2 cursor-pointer hover:bg-gray-50 flex items-center transition-colors"
+                                                >
+                                                    {getPriorityUI(p)}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         </div>
 
                         {/* Assignee */}
-                        <div className="grid grid-cols-3 items-center gap-4 pt-2 border-t border-gray-100">
+                        <div className="grid grid-cols-3 items-center gap-4 pt-2 border-t border-gray-100 relative z-20">
                             <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Assignee</span>
-                            <div className="col-span-2 relative z-20">
+                            <div className="col-span-2">
                                 <AssigneeSelect
                                     taskId={task.id}
                                     projectId={task.project_id}
@@ -135,7 +148,7 @@ export default function TaskDetailsSidebar({ task, isOpen, onClose, onUpdate, on
                         </div>
 
                         {/* Dates */}
-                        <div className="grid grid-cols-3 items-center gap-4 pt-2 border-t border-gray-100">
+                        <div className="grid grid-cols-3 items-center gap-4 pt-2 border-t border-gray-100 relative z-10">
                             <span className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5"><CalendarDays size={14} /> Start</span>
                             <div className="col-span-2">
                                 <input
@@ -147,7 +160,7 @@ export default function TaskDetailsSidebar({ task, isOpen, onClose, onUpdate, on
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-3 items-center gap-4">
+                        <div className="grid grid-cols-3 items-center gap-4 relative z-0">
                             <span className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5"><CalendarIcon size={14} /> Due</span>
                             <div className="col-span-2">
                                 <input
@@ -184,7 +197,7 @@ export default function TaskDetailsSidebar({ task, isOpen, onClose, onUpdate, on
                         </div>
                     </div>
 
-                    {/* 🌟 التعديل هنا: Subtasks Section */}
+                    {/* Subtasks Section */}
                     <TaskSubtasks
                         task={task}
                         subtasks={subtasks}
@@ -197,7 +210,8 @@ export default function TaskDetailsSidebar({ task, isOpen, onClose, onUpdate, on
                     {/* Comments Section */}
                     <TaskComments taskId={task.id} />
                     {/* Activity Log Section */}
-                    <TaskActivityLog taskId={task.id} />
+                    {/* استخدمنا Math.random() كحيلة ذكية لإجبار الكومبوننت على التحديث فوراً بعد أي تعديل */}
+                    <TaskActivityLog key={Math.random()} taskId={task.id} />
 
                     {/* Delete Area - Custom UI */}
                     <div className="pt-4 mt-8 border-t border-red-100 pb-8">

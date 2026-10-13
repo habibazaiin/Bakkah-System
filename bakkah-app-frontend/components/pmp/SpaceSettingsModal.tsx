@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { X, Users, MailPlus, Loader2, ShieldCheck, Mail, Send, Clock, ChevronDown, UserMinus, AlertTriangle, Layers, Plus, Trash2, CheckCircle2 } from 'lucide-react';
 import { PmpService } from '@/services/pmp.service';
 import { Space, SpaceMember, Invitation, SpaceTeam } from '@/types/pmp.types';
-import { TEAM_MEMBERS } from '@/constants/team';
 
 interface Props {
     isOpen: boolean;
@@ -183,7 +182,7 @@ export default function SpaceSettingsModal({ isOpen, onClose, space }: Props) {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="fixed inset-0 bg-[#1F2937]/40 backdrop-blur-sm transition-opacity" onClick={onClose} />
             <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl animate-fade-in-up z-10 flex flex-col max-h-[90vh]">
-                
+
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-[#F8FAFC] rounded-t-3xl shrink-0">
                     <div>
@@ -235,8 +234,13 @@ export default function SpaceSettingsModal({ isOpen, onClose, space }: Props) {
                                     ) : (
                                         <div className="bg-white border border-gray-100 rounded-2xl shadow-sm">
                                             {members.map(member => {
-                                                const u = TEAM_MEMBERS.find(m => m.id === member.user_id) || { name: 'Workspace User', initials: 'WU', color: 'bg-gray-100 text-gray-600' };
+                                                const name = member.name || member.email || 'Unknown User';
+                                                const initials = name.substring(0, 2).toUpperCase();
+                                                const colors = ['bg-purple-100 text-purple-700', 'bg-blue-100 text-blue-700', 'bg-green-100 text-green-700', 'bg-orange-100 text-orange-700', 'bg-pink-100 text-pink-700'];
+                                                const color = colors[(member.user_id?.charCodeAt(0) || 0) % colors.length];
+                                                const u = { name, initials, color };
                                                 const isOwner = member.role === 'owner';
+
                                                 return (
                                                     <div key={member.user_id} className="flex items-center justify-between p-4 border-b border-gray-50 last:border-b-0 hover:bg-gray-50 transition-colors">
                                                         <div className="flex items-center gap-3">
@@ -332,9 +336,15 @@ export default function SpaceSettingsModal({ isOpen, onClose, space }: Props) {
                                                                 <p className="text-xs text-gray-500 p-4 text-center">No members available to add.</p>
                                                             ) : (
                                                                 members.map(member => {
-                                                                    const u = TEAM_MEMBERS.find(m => m.id === member.user_id) || { name: 'Workspace User', initials: 'WU', color: 'bg-gray-100' };
+                                                                    const name = member.name || member.email || 'Unknown User';
+                                                                    const initials = name.substring(0, 2).toUpperCase();
+                                                                    const colors = ['bg-purple-100 text-purple-700', 'bg-blue-100 text-blue-700', 'bg-green-100 text-green-700', 'bg-orange-100 text-orange-700', 'bg-pink-100 text-pink-700'];
+                                                                    const color = colors[(member.user_id?.charCodeAt(0) || 0) % colors.length];
+
+                                                                    const u = { name, initials, color };
                                                                     const isMember = team.members.includes(member.user_id);
                                                                     const procId = `toggle-${team.id}-${member.user_id}`;
+
                                                                     return (
                                                                         <div key={member.user_id} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-xl transition-colors">
                                                                             <div className="flex items-center gap-3">

@@ -202,13 +202,12 @@ export const PmpService = {
     },
 
     // --- Members & Invitations ---
-    async getSpaceMembers(spaceId: string): Promise<SpaceMember[]> {
+    async getSpaceMembers(spaceId: string): Promise<any[]> {
         const headers = await this.getHeaders();
-        const response = await fetch(`${API_URL}/members/${spaceId}`, { headers });
-        if (!response.ok) {
-            const err = await response.json().catch(() => ({}));
-            throw new Error(err.detail || 'Failed to fetch members');
-        }
+        // 🌟 التعديل هنا: غيرنا المسار عشان يكلم الـ API اللي بيجيب الأونر والأسماء
+        const response = await fetch(`${API_URL}/members/workspace-users/${spaceId}`, { method: 'GET', headers });
+
+        if (!response.ok) throw new Error('Failed to fetch space members');
         return response.json();
     },
 
@@ -355,6 +354,14 @@ export const PmpService = {
         const headers = await this.getHeaders();
         const response = await fetch(`${API_URL}/teams/${spaceId}/${teamId}/members/${userId}`, { method: 'DELETE', headers });
         if (!response.ok) throw new Error('Failed to remove member from team');
+        return response.json();
+    },
+
+    async getMyTasks(): Promise<any[]> {
+        const headers = await this.getHeaders();
+        // هنكلم الـ endpoint الجديد اللي بيجيب مهامي
+        const response = await fetch(`${API_URL}/tasks/my-tasks`, { method: 'GET', headers });
+        if (!response.ok) throw new Error('Failed to fetch my tasks');
         return response.json();
     }
 };
