@@ -263,15 +263,10 @@ export const PmpService = {
     },
 
     async getNotifications(): Promise<AppNotification[]> {
-        try {
-            const headers = await this.getHeaders();
-            const response = await fetch(`${API_URL}/members/notifications/all`, { headers });
-            if (!response.ok) return [];
-            return await response.json();
-        } catch (error) {
-            console.error("Notifications fetch error:", error);
-            return []; // إرجاع مصفوفة فارغة بدل ضرب الإيرور
-        }
+        const headers = await this.getHeaders();
+        const response = await fetch(`${API_URL}/members/notifications/all`, { headers });
+        if (!response.ok) return [];
+        return await response.json();
     },
 
     async markNotificationsRead(): Promise<void> {
@@ -363,5 +358,14 @@ export const PmpService = {
         const response = await fetch(`${API_URL}/tasks/my-tasks`, { method: 'GET', headers });
         if (!response.ok) throw new Error('Failed to fetch my tasks');
         return response.json();
+    },
+
+    async deleteNotification(id: string): Promise<void> {
+        const headers = await this.getHeaders();
+        const response = await fetch(`${API_URL}/members/notifications/${id}`, {
+            method: 'DELETE',
+            headers
+        });
+        if (!response.ok) throw new Error('Failed to delete notification');
     }
 };

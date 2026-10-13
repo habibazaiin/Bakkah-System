@@ -13,19 +13,15 @@ class MemberService:
     def create_invitation(data: InvitationCreate, user_id: str, background_tasks):
         space_id_str = str(data.space_id)
         
-        # 1. فحص هل فيه دعوة قديمة لنفس الإيميل في نفس الـ Space
         existing_invite = supabase.table("invitations").select("*").eq("space_id", space_id_str).eq("email", data.email).execute()
         
         if existing_invite.data:
             old_invite = existing_invite.data[0]
-            # لو الدعوة لسه متعلقة، نمنع التكرار
             if old_invite["status"] == "pending":
                 raise HTTPException(status_code=400, detail="Invitation already pending for this email.")
             else:
-                # لو كان قابلها قبل كده أو رفضها (يعني اتمسح من الـ Space)، نمسح السجل القديم عشان نبعت جديد
                 supabase.table("invitations").delete().eq("id", old_invite["id"]).execute()
 
-        # 2. إنشاء الدعوة الجديدة
         dump = data.model_dump()
         dump["space_id"] = space_id_str
         dump["created_by"] = user_id
@@ -37,7 +33,6 @@ class MemberService:
             invite_token = invite.get("token") or invite["id"] 
             invite_link = f"http://localhost:3000/pmp/invitations/{invite_token}"
             
-            # إرسال الإيميل
             html_body = f"""
             <h3>You have been invited!</h3>
             <p>You have been invited to join a workspace on Bakkah PMP as a <b>{data.role}</b>.</p>
@@ -58,7 +53,6 @@ class MemberService:
 
     @staticmethod
     def respond_to_invitation(invite_id: str, user_id: str, action: str):
-        # 1. جلب الدعوة
         invite_res = supabase.table("invitations").select("*").eq("id", invite_id).execute()
         if not invite_res.data:
             raise HTTPException(status_code=404, detail="Invitation not found")
@@ -67,11 +61,9 @@ class MemberService:
         if invite["status"] != "pending":
             raise HTTPException(status_code=400, detail="Invitation already processed")
 
-        # 2. تحديث حالة الدعوة (accepted أو declined)
         new_status = "accepted" if action == "accept" else "declined"
         supabase.table("invitations").update({"status": new_status}).eq("id", invite_id).execute()
 
-        # 3. لو وافق، ضيفه في الـ Space
         if action == "accept":
             try:
                 supabase.table("space_members").insert({
@@ -80,9 +72,8 @@ class MemberService:
                     "role": invite["role"]
                 }).execute()
             except:
-                pass # لو موجود قبل كده مفيش مشكلة
+                pass 
 
-        # 4. إرسال إشعار (Notification) للشخص اللي بعت الدعوة
         notification_title = "Invitation Accepted" if action == "accept" else "Invitation Declined"
         notification_msg = f"{invite['email']} has {new_status} your workspace invitation."
         
@@ -93,13 +84,3 @@ class MemberService:
         }).execute()
 
         return {"message": f"Invitation {new_status} successfully"}
-
-    @staticmethod
-    def get_user_notifications(user_id: str):
-        res = supabase.table("notifications").select("*").eq("user_id", user_id).order("created_at", desc=True).execute()
-        return res.data
-
-    @staticmethod
-    def mark_notifications_read(user_id: str):
-        supabase.table("notifications").update({"is_read": True}).eq("user_id", user_id).eq("is_read", False).execute()
-        return {"message": "Marked as read"}

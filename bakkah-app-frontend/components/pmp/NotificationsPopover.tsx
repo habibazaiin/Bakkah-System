@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Bell, CheckCircle2 } from 'lucide-react';
+import { Bell, CheckCircle2, X, Loader2 } from 'lucide-react';
 import { PmpService } from '@/services/pmp.service';
 import { AppNotification } from '@/types/pmp.types';
 
 export default function NotificationsPopover() {
     const [isOpen, setIsOpen] = useState(false);
     const [notifications, setNotifications] = useState<AppNotification[]>([]);
+    const [deletingId, setDeletingId] = useState<string | null>(null);
 
     const fetchNotifs = async () => {
         try {
@@ -18,7 +19,6 @@ export default function NotificationsPopover() {
         }
     };
 
-    // جلب الإشعارات كل 15 ثانية
     useEffect(() => {
         fetchNotifs();
         const interval = setInterval(fetchNotifs, 15000);
@@ -33,6 +33,19 @@ export default function NotificationsPopover() {
                 await PmpService.markNotificationsRead();
                 setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
             }
+        }
+    };
+
+    const handleDelete = async (e: React.MouseEvent, id: string) => {
+        e.stopPropagation();
+        setDeletingId(id);
+        try {
+            await PmpService.deleteNotification(id);
+            setNotifications(prev => prev.filter(n => n.id !== id));
+        } catch (error) {
+            console.error("Failed to delete notification", error);
+        } finally {
+            setDeletingId(null);
         }
     };
 
@@ -64,8 +77,8 @@ export default function NotificationsPopover() {
                                 <p className="text-center p-6 text-sm text-gray-400 font-medium">No notifications yet.</p>
                             ) : (
                                 notifications.map(notif => (
-                                    <div key={notif.id} className={`p-4 border-b border-gray-50 last:border-b-0 ${notif.is_read ? 'bg-white' : 'bg-blue-50/30'}`}>
-                                        <div className="flex gap-3">
+                                    <div key={notif.id} className={`p-4 border-b border-gray-50 last:border-b-0 relative group transition-colors hover:bg-gray-50/80 ${notif.is_read ? 'bg-white' : 'bg-blue-50/30'}`}>
+                                        <div className="flex gap-3 pr-6">
                                             <div className="mt-0.5 text-[#1E5A7A]"><CheckCircle2 size={16} /></div>
                                             <div>
                                                 <p className="text-sm font-bold text-[#1F2937] mb-0.5">{notif.title}</p>
@@ -75,6 +88,16 @@ export default function NotificationsPopover() {
                                                 </p>
                                             </div>
                                         </div>
+                                        
+                                        {/* زر الحذف بيظهر عند الـ Hover */}
+                                        <button 
+                                            onClick={(e) => handleDelete(e, notif.id)}
+                                            disabled={deletingId === notif.id}
+                                            className="absolute top-4 right-4 p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all focus:opacity-100"
+                                            title="Delete notification"
+                                        >
+                                            {deletingId === notif.id ? <Loader2 size={14} className="animate-spin text-red-500" /> : <X size={14} strokeWidth={2.5} />}
+                                        </button>
                                     </div>
                                 ))
                             )}
