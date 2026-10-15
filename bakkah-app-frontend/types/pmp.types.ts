@@ -43,6 +43,7 @@ export interface Task {
     created_at: string;
     updated_at?: string;
     subtasks?: Task[]; // لربط المهام الفرعية بالشاشة
+    depends_on_task_id?: string;
 }
 
 export interface Comment {

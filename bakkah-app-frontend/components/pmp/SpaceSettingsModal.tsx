@@ -36,6 +36,9 @@ export default function SpaceSettingsModal({ isOpen, onClose, space }: Props) {
     const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
     const [memberToRemove, setMemberToRemove] = useState<string | null>(null);
 
+    // 🌟 State for custom Team Delete Modal
+    const [teamToDelete, setTeamToDelete] = useState<string | null>(null);
+
     useEffect(() => {
         if (isOpen && space) {
             fetchData();
@@ -49,6 +52,7 @@ export default function SpaceSettingsModal({ isOpen, onClose, space }: Props) {
             setOpenDropdownId(null);
             setMemberToRemove(null);
             setExpandedTeamId(null);
+            setTeamToDelete(null); // تصفير الستيت لما الشاشة تقفل
         }
     }, [isOpen, space]);
 
@@ -143,17 +147,19 @@ export default function SpaceSettingsModal({ isOpen, onClose, space }: Props) {
         }
     };
 
-    const handleDeleteTeam = async (teamId: string) => {
-        if (!space || !window.confirm("Are you sure you want to delete this team?")) return;
-        setProcessingId(`delete-team-${teamId}`);
+    // 🌟 دالة تأكيد حذف الفريق الجديدة
+    const confirmDeleteTeam = async () => {
+        if (!space || !teamToDelete) return;
+        setProcessingId(`delete-team-${teamToDelete}`);
         try {
-            await PmpService.deleteTeam(space.id, teamId);
-            setTeams(prev => prev.filter(t => t.id !== teamId));
+            await PmpService.deleteTeam(space.id, teamToDelete);
+            setTeams(prev => prev.filter(t => t.id !== teamToDelete));
             setMessage({ type: 'success', text: 'Team deleted successfully.' });
         } catch (error: any) {
             setMessage({ type: 'error', text: error.message || 'Failed to delete team.' });
         } finally {
             setProcessingId(null);
+            setTeamToDelete(null);
         }
     };
 
@@ -322,7 +328,8 @@ export default function SpaceSettingsModal({ isOpen, onClose, space }: Props) {
                                                             </div>
                                                         </div>
                                                         <div className="flex items-center gap-3">
-                                                            <button onClick={(e) => { e.stopPropagation(); handleDeleteTeam(team.id); }} disabled={processingId === `delete-team-${team.id}`} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                                                            {/* 🌟 زرار سلة المهملات الجديد 🌟 */}
+                                                            <button onClick={(e) => { e.stopPropagation(); setTeamToDelete(team.id); }} disabled={processingId === `delete-team-${team.id}`} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
                                                                 {processingId === `delete-team-${team.id}` ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
                                                             </button>
                                                             <ChevronDown size={18} className={`text-gray-400 transition-transform ${expandedTeamId === team.id ? 'rotate-180' : ''}`} />
@@ -428,7 +435,7 @@ export default function SpaceSettingsModal({ isOpen, onClose, space }: Props) {
                 </div>
             </div>
 
-            {/* Custom Confirm Modal for Deletion */}
+            {/* Custom Confirm Modal for User Deletion */}
             {memberToRemove && (
                 <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
                     <div className="fixed inset-0 bg-[#1F2937]/60 backdrop-blur-sm transition-opacity" onClick={() => setMemberToRemove(null)} />
@@ -440,6 +447,26 @@ export default function SpaceSettingsModal({ isOpen, onClose, space }: Props) {
                             <button onClick={() => setMemberToRemove(null)} disabled={processingId === memberToRemove} className="flex-1 px-5 py-3.5 bg-gray-50 text-gray-700 font-bold rounded-xl hover:bg-gray-100 transition-colors border border-gray-200">Cancel</button>
                             <button onClick={confirmRemoveMember} disabled={processingId === memberToRemove} className="flex-1 px-5 py-3.5 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-colors shadow-md flex justify-center items-center gap-2">
                                 {processingId === memberToRemove ? <Loader2 size={18} className="animate-spin" /> : 'Yes, Remove'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 🌟 Custom Confirm Modal for Team Deletion */}
+            {teamToDelete && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                    <div className="fixed inset-0 bg-[#1F2937]/60 backdrop-blur-sm transition-opacity" onClick={() => setTeamToDelete(null)} />
+                    <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 text-center animate-fade-in-up z-10">
+                        <div className="w-16 h-16 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-sm border border-red-100">
+                            <Trash2 size={32} strokeWidth={2.5} />
+                        </div>
+                        <h3 className="text-2xl font-black text-[#1F2937] mb-2">Delete Team?</h3>
+                        <p className="text-sm text-gray-500 font-medium mb-8 leading-relaxed">Are you sure you want to delete this team? This action cannot be undone and will remove all members from it.</p>
+                        <div className="flex gap-3">
+                            <button onClick={() => setTeamToDelete(null)} disabled={processingId === `delete-team-${teamToDelete}`} className="flex-1 px-5 py-3.5 bg-gray-50 text-gray-700 font-bold rounded-xl hover:bg-gray-100 transition-colors border border-gray-200">Cancel</button>
+                            <button onClick={confirmDeleteTeam} disabled={processingId === `delete-team-${teamToDelete}`} className="flex-1 px-5 py-3.5 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-colors shadow-md flex justify-center items-center gap-2">
+                                {processingId === `delete-team-${teamToDelete}` ? <Loader2 size={18} className="animate-spin" /> : 'Yes, Delete'}
                             </button>
                         </div>
                     </div>

@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { List, LayoutTemplate, CalendarDays, LineChart, Sparkles } from 'lucide-react';
+import { List, LayoutTemplate, CalendarDays, Calendar, LineChart, Sparkles, AlertTriangle } from 'lucide-react';
 import { PmpService } from '@/services/pmp.service';
-
+import CalendarView from '@/components/pmp/project/CalendarView';
 import TableView, { getStatusUI } from '@/components/pmp/project/TableView';
 import KanbanView from '@/components/pmp/project/KanbanView';
 import MetricsView from '@/components/pmp/project/MetricsView';
@@ -13,7 +13,7 @@ import TaskDetailsSidebar from '@/components/pmp/project/TaskDetailsSidebar';
 import { Task, Project } from '@/types/pmp.types';
 import { supabase } from '@/lib/supabase';
 
-type ViewType = 'table' | 'kanban' | 'gantt' | 'metrics' | 'ai';
+type ViewType = 'table' | 'kanban' | 'gantt' | 'calendar' | 'metrics' | 'ai';
 
 export default function ProjectPage() {
     const params = useParams();
@@ -25,9 +25,11 @@ export default function ProjectPage() {
     const [isLoadingData, setIsLoadingData] = useState(true);
     const [isCreatingTask, setIsCreatingTask] = useState(false);
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+    const [blockedWarning, setBlockedWarning] = useState<{ isOpen: boolean, taskName: string } | null>(null);
 
     const mainTasks = tasks.filter(t => !t.parent_task_id);
     const projectProgress = mainTasks.length > 0 ? Math.round((mainTasks.filter(t => t.status === 'Done').length / mainTasks.length) * 100) : 0;
+    const dynamicProjectStatus = mainTasks.length === 0 ? 'To Do' : (projectProgress === 100 ? 'Done' : 'In Progress');
 
     const fetchData = async () => {
         setIsLoadingData(true);
@@ -113,6 +115,20 @@ export default function ProjectPage() {
     };
 
     const handleUpdateTask = async (taskId: string, field: string, value: string) => {
+        // فحص الاعتماديات (Dependency Check)
+        if (field === 'status' && value !== 'To Do') {
+            const taskToUpdate = tasks.find(t => t.id === taskId);
+            if (taskToUpdate && taskToUpdate.depends_on_task_id) {
+                const dependentTask = tasks.find(t => t.id === taskToUpdate.depends_on_task_id);
+
+                if (dependentTask && dependentTask.status !== 'Done') {
+                    // 🌟 هنا شيلنا الـ alert وحطينا الـ Custom UI State 🌟
+                    setBlockedWarning({ isOpen: true, taskName: dependentTask.title });
+                    return;
+                }
+            }
+        }
+
         setTasks(prev => prev.map(t => t.id === taskId ? { ...t, [field]: value } : t));
         if (selectedTask?.id === taskId) {
             setSelectedTask((prev: any) => ({ ...prev, [field]: value }));
@@ -155,10 +171,15 @@ export default function ProjectPage() {
                 return <TableView tasks={mainTasks} allTasks={tasks} isLoading={isLoadingData} onUpdate={handleUpdateTask} onCreate={handleCreateTask} isCreating={isCreatingTask} onTaskClick={setSelectedTask} statuses={project?.statuses || ['To Do', 'In Progress', 'Done']} />;
             case 'kanban':
                 return <KanbanView tasks={mainTasks} allTasks={tasks} isLoading={isLoadingData} onUpdate={handleUpdateTask} onTaskClick={setSelectedTask} statuses={project?.statuses || ['To Do', 'In Progress', 'Done']} onAddStatus={handleAddStatus} />;
-            case 'metrics':
-                return <MetricsView tasks={mainTasks} isLoading={isLoadingData} />;
             case 'gantt':
                 return <GanttView tasks={mainTasks} isLoading={isLoadingData} onTaskClick={setSelectedTask} onUpdate={handleUpdateTask} />;
+
+            // 🌟 السطر ده اللي كان ناقص عشان الشاشة متكونش بيضا 🌟
+            case 'calendar':
+                return <CalendarView tasks={mainTasks} isLoading={isLoadingData} onTaskClick={setSelectedTask} />;
+
+            case 'metrics':
+                return <MetricsView tasks={mainTasks} isLoading={isLoadingData} />;
             case 'ai':
                 return (
                     <div className="bg-gradient-to-br from-[#1E5A7A]/5 to-[#B03052]/5 rounded-3xl shadow-sm border border-[#1E5A7A]/10 p-8 flex flex-col items-center justify-center min-h-[400px] animate-fade-in-up">
@@ -178,7 +199,7 @@ export default function ProjectPage() {
                     <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
                             <h1 className="text-3xl font-black text-[#1F2937] tracking-tight">{project ? project.name : 'Loading...'}</h1>
-                            {getStatusUI('In Progress')}
+                            {project && getStatusUI(dynamicProjectStatus)}
                         </div>
                         <p className="text-gray-500 font-medium text-sm max-w-2xl leading-relaxed mb-6">Manage your tasks, track progress, and collaborate seamlessly.</p>
                     </div>
@@ -195,10 +216,15 @@ export default function ProjectPage() {
                 </div>
             </div>
 
+            {/* شريط التنقل بين الشاشات (Tabs) */}
             <div className="flex items-center gap-2 border-b border-gray-200 pb-px overflow-x-auto hide-scrollbar">
                 <button onClick={() => setActiveView('table')} className={`flex items-center gap-2 px-5 py-3.5 text-sm font-bold transition-all border-b-2 whitespace-nowrap ${activeView === 'table' ? 'border-[#1E5A7A] text-[#1E5A7A]' : 'border-transparent text-gray-500 hover:text-gray-800 hover:bg-gray-50 rounded-t-xl'}`}><List size={18} strokeWidth={2.5} /> Table</button>
                 <button onClick={() => setActiveView('kanban')} className={`flex items-center gap-2 px-5 py-3.5 text-sm font-bold transition-all border-b-2 whitespace-nowrap ${activeView === 'kanban' ? 'border-[#1E5A7A] text-[#1E5A7A]' : 'border-transparent text-gray-500 hover:text-gray-800 hover:bg-gray-50 rounded-t-xl'}`}><LayoutTemplate size={18} strokeWidth={2.5} /> Kanban</button>
                 <button onClick={() => setActiveView('gantt')} className={`flex items-center gap-2 px-5 py-3.5 text-sm font-bold transition-all border-b-2 whitespace-nowrap ${activeView === 'gantt' ? 'border-[#1E5A7A] text-[#1E5A7A]' : 'border-transparent text-gray-500 hover:text-gray-800 hover:bg-gray-50 rounded-t-xl'}`}><CalendarDays size={18} strokeWidth={2.5} /> Gantt</button>
+
+                {/* 🌟 زرار الكاليندر اهو 🌟 */}
+                <button onClick={() => setActiveView('calendar')} className={`flex items-center gap-2 px-5 py-3.5 text-sm font-bold transition-all border-b-2 whitespace-nowrap ${activeView === 'calendar' ? 'border-[#1E5A7A] text-[#1E5A7A]' : 'border-transparent text-gray-500 hover:text-gray-800 hover:bg-gray-50 rounded-t-xl'}`}><Calendar size={18} strokeWidth={2.5} /> Calendar</button>
+
                 <button onClick={() => setActiveView('metrics')} className={`flex items-center gap-2 px-5 py-3.5 text-sm font-bold transition-all border-b-2 whitespace-nowrap ${activeView === 'metrics' ? 'border-[#1E5A7A] text-[#1E5A7A]' : 'border-transparent text-gray-500 hover:text-gray-800 hover:bg-gray-50 rounded-t-xl'}`}><LineChart size={18} strokeWidth={2.5} /> Metrics</button>
                 <button onClick={() => setActiveView('ai')} className={`flex items-center gap-2 px-5 py-3.5 text-sm font-bold transition-all border-b-2 whitespace-nowrap ${activeView === 'ai' ? 'border-[#B03052] text-[#B03052]' : 'border-transparent text-gray-500 hover:text-[#B03052] hover:bg-red-50 rounded-t-xl'}`}><Sparkles size={18} strokeWidth={2.5} /> AI Health</button>
             </div>
@@ -215,6 +241,28 @@ export default function ProjectPage() {
                 allTasks={tasks}
                 refreshTasks={fetchData}
             />
+
+            {/* 🌟 Custom Blocked Task Warning Modal 🌟 */}
+            {blockedWarning && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="fixed inset-0 bg-[#1F2937]/60 backdrop-blur-sm transition-opacity" onClick={() => setBlockedWarning(null)} />
+                    <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 text-center animate-fade-in-up z-10">
+                        <div className="w-16 h-16 bg-orange-50 text-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-sm border border-orange-100">
+                            <AlertTriangle size={32} strokeWidth={2.5} />
+                        </div>
+                        <h3 className="text-2xl font-black text-[#1F2937] mb-2">Task Blocked!</h3>
+                        <p className="text-sm text-gray-500 font-medium mb-8 leading-relaxed">
+                            Cannot start or complete this task. It is currently blocked by:
+                            <span className="font-black text-[#1E5A7A] mt-2 block p-2 bg-blue-50/50 rounded-lg border border-blue-100">
+                                "{blockedWarning.taskName}"
+                            </span>
+                        </p>
+                        <button onClick={() => setBlockedWarning(null)} className="w-full px-5 py-3.5 bg-gray-50 text-gray-700 font-bold rounded-xl hover:bg-gray-100 transition-colors border border-gray-200 shadow-sm">
+                            Understood
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

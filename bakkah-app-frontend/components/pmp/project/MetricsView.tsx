@@ -1,8 +1,7 @@
-// src/components/pmp/project/MetricsView.tsx
 'use client';
 
 import React from 'react';
-import { Loader2, TrendingUp, Target, AlertTriangle, CheckCircle2, BarChart3, Activity } from 'lucide-react';
+import { Loader2, TrendingUp, Target, AlertTriangle, CheckCircle2, Activity, Clock, CalendarRange } from 'lucide-react';
 
 export default function MetricsView({ tasks, isLoading }: any) {
     if (isLoading) {
@@ -20,6 +19,29 @@ export default function MetricsView({ tasks, isLoading }: any) {
     const lowPriority = tasks.filter((t: any) => t.priority === 'Low').length;
 
     const completionRate = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
+
+    // --- حسابات الوقت الحقيقية (Time Metrics) ---
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const nextWeek = new Date(today);
+    nextWeek.setDate(today.getDate() + 7);
+
+    // مهام متأخرة (تاريخها عدّى ولسه مخلصتش)
+    const overdueTasks = tasks.filter((t: any) => {
+        if (t.status === 'Done' || !t.due_date) return false;
+        const dueDate = new Date(t.due_date);
+        dueDate.setHours(0, 0, 0, 0);
+        return dueDate < today;
+    }).length;
+
+    // مهام هتنتهي خلال أسبوع
+    const upcomingDeadlines = tasks.filter((t: any) => {
+        if (t.status === 'Done' || !t.due_date) return false;
+        const dueDate = new Date(t.due_date);
+        dueDate.setHours(0, 0, 0, 0);
+        return dueDate >= today && dueDate <= nextWeek;
+    }).length;
 
     return (
         <div className="space-y-6 animate-fade-in-up pb-6">
@@ -118,29 +140,33 @@ export default function MetricsView({ tasks, isLoading }: any) {
                 </div>
             </div>
 
-            {/* Bottom Section: PMP specific (EVM Placeholder for future) */}
+            {/* 🌟 الجزء الجديد الحقيقي: مخاطر الوقت والجدول الزمني 🌟 */}
             <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
-                        <BarChart3 className="text-[#1E5A7A]" size={20} />
-                        <h3 className="font-extrabold text-[#1F2937] text-lg">Earned Value Management (EVM)</h3>
+                        <Clock className="text-[#1E5A7A]" size={20} />
+                        <h3 className="font-extrabold text-[#1F2937] text-lg">Schedule & Time Risks</h3>
                     </div>
-                    <span className="px-3 py-1 bg-gray-100 text-gray-500 text-xs font-bold rounded-lg uppercase tracking-wider">Advanced</span>
+                    <span className="px-3 py-1 bg-blue-50 text-[#1E5A7A] text-xs font-bold rounded-lg uppercase tracking-wider">Live</span>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="p-4 border border-gray-100 rounded-2xl bg-gray-50/50">
-                        <p className="text-sm font-bold text-gray-500 mb-1">Schedule Performance Index (SPI)</p>
-                        <div className="flex items-end gap-2">
-                            <h4 className="text-2xl font-black text-[#1F2937]">1.05</h4>
-                            <span className="text-xs font-bold text-green-600 mb-1">Ahead of schedule</span>
+                    <div className="p-5 border border-red-100 rounded-2xl bg-red-50/30 flex items-center justify-between hover:bg-red-50 transition-colors">
+                        <div>
+                            <p className="text-sm font-bold text-red-500 flex items-center gap-2 mb-1">
+                                <AlertTriangle size={16} /> Overdue Tasks
+                            </p>
+                            <p className="text-xs text-gray-500 font-medium">Missed deadlines, requires attention</p>
                         </div>
+                        <h4 className={`text-3xl font-black ${overdueTasks > 0 ? 'text-red-600' : 'text-gray-400'}`}>{overdueTasks}</h4>
                     </div>
-                    <div className="p-4 border border-gray-100 rounded-2xl bg-gray-50/50">
-                        <p className="text-sm font-bold text-gray-500 mb-1">Cost Performance Index (CPI)</p>
-                        <div className="flex items-end gap-2">
-                            <h4 className="text-2xl font-black text-[#1F2937]">0.98</h4>
-                            <span className="text-xs font-bold text-orange-500 mb-1">Slightly over budget</span>
+                    <div className="p-5 border border-orange-100 rounded-2xl bg-orange-50/30 flex items-center justify-between hover:bg-orange-50 transition-colors">
+                        <div>
+                            <p className="text-sm font-bold text-orange-500 flex items-center gap-2 mb-1">
+                                <CalendarRange size={16} /> Upcoming Deadlines
+                            </p>
+                            <p className="text-xs text-gray-500 font-medium">Due within the next 7 days</p>
                         </div>
+                        <h4 className={`text-3xl font-black ${upcomingDeadlines > 0 ? 'text-orange-600' : 'text-gray-400'}`}>{upcomingDeadlines}</h4>
                     </div>
                 </div>
             </div>

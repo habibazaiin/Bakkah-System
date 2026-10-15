@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, AlignLeft, Calendar as CalendarIcon, Save, Loader2, Trash2, CalendarDays } from 'lucide-react';
+import { X, AlignLeft, Calendar as CalendarIcon, Save, Loader2, Trash2, CalendarDays, AlertTriangle, Link, ChevronDown } from 'lucide-react';
 import { getStatusUI, getPriorityUI } from './TableView';
 import AssigneeSelect from './AssigneeSelect';
 import TaskComments from './TaskComments';
@@ -29,6 +29,7 @@ export default function TaskDetailsSidebar({ task, isOpen, onClose, onUpdate, on
     // 🌟 State للقوائم المنسدلة الجديدة
     const [isStatusOpen, setIsStatusOpen] = useState(false);
     const [isPriorityOpen, setIsPriorityOpen] = useState(false);
+    const [isDependencyOpen, setIsDependencyOpen] = useState(false);
 
     useEffect(() => {
         if (task) {
@@ -131,6 +132,71 @@ export default function TaskDetailsSidebar({ task, isOpen, onClose, onUpdate, on
                                     </>
                                 )}
                             </div>
+                        </div>
+
+                        {/* 🌟 Task Dependency (Blocked By) - Custom UI 🌟 */}
+                        <div className="mb-6 relative">
+                            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                <Link size={14} /> Depends On (Blocked By)
+                            </label>
+
+                            <div
+                                onClick={() => setIsDependencyOpen(!isDependencyOpen)}
+                                className="flex items-center justify-between w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-[#1F2937] hover:bg-white hover:border-[#1E5A7A] cursor-pointer transition-all shadow-sm"
+                            >
+                                <span className="truncate">
+                                    {task.depends_on_task_id
+                                        ? allTasks.find(t => t.id === task.depends_on_task_id)?.title || 'Unknown Task'
+                                        : 'None (Can start anytime)'}
+                                </span>
+                                <ChevronDown size={16} className={`text-gray-400 transition-transform ${isDependencyOpen ? 'rotate-180' : ''}`} />
+                            </div>
+
+                            {isDependencyOpen && (
+                                <>
+                                    {/* خلفية شفافة عشان لما تدوسي برة تقفل */}
+                                    <div className="fixed inset-0 z-30" onClick={() => setIsDependencyOpen(false)} />
+
+                                    {/* القائمة نفسها */}
+                                    <div className="absolute top-full left-0 mt-2 w-full bg-white border border-gray-100 rounded-xl shadow-xl z-50 py-2 max-h-60 overflow-y-auto animate-fade-in-up">
+
+                                        <div
+                                            onClick={() => { onUpdate(task.id, 'depends_on_task_id', null); setIsDependencyOpen(false); }}
+                                            className={`px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors flex items-center gap-2 text-sm font-bold border-b border-gray-50 ${!task.depends_on_task_id ? 'text-[#1E5A7A] bg-blue-50/50' : 'text-gray-500'}`}
+                                        >
+                                            None (Can start anytime)
+                                        </div>
+
+                                        {allTasks
+                                            .filter(t => t.id !== task.id && t.depends_on_task_id !== task.id)
+                                            .map(t => (
+                                                <div
+                                                    key={t.id}
+                                                    onClick={() => { onUpdate(task.id, 'depends_on_task_id', t.id); setIsDependencyOpen(false); }}
+                                                    className={`px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-between text-sm font-bold ${task.depends_on_task_id === t.id ? 'text-[#1E5A7A] bg-blue-50/50' : 'text-gray-700'}`}
+                                                >
+                                                    <span className="truncate pr-3">{t.title}</span>
+                                                    <span className={`text-[10px] px-2 py-1 rounded-md border whitespace-nowrap uppercase tracking-wider ${t.status === 'Done' ? 'bg-green-50 text-green-600 border-green-200' :
+                                                        t.status === 'In Progress' ? 'bg-blue-50 text-blue-600 border-blue-200' :
+                                                            'bg-gray-50 text-gray-500 border-gray-200'
+                                                        }`}>
+                                                        {t.status}
+                                                    </span>
+                                                </div>
+                                            ))
+                                        }
+                                    </div>
+                                </>
+                            )}
+
+                            {task.depends_on_task_id && (
+                                <div className="mt-2.5 p-3 bg-orange-50 border border-orange-100 rounded-xl flex items-start gap-2 animate-fade-in-up">
+                                    <AlertTriangle size={16} className="text-orange-500 shrink-0 mt-0.5" />
+                                    <p className="text-xs font-bold text-orange-700 leading-relaxed">
+                                        This task is blocked. It cannot be started or moved in the timeline before its dependency is completed.
+                                    </p>
+                                </div>
+                            )}
                         </div>
 
                         {/* Assignee */}
