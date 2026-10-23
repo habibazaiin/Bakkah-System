@@ -40,3 +40,14 @@ class TeamService:
     def delete_team(team_id: str):
         supabase.table("teams").delete().eq("id", team_id).execute()
         return {"message": "Team deleted successfully"}
+
+
+    @staticmethod
+    def update_team(team_id: str, name: str):
+        try:
+            res = supabase.table("teams").update({"name": name}).eq("id", team_id).select().execute()
+            if not res.data:
+                raise HTTPException(status_code=404, detail="Team not found")
+            return res.data[0]
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))

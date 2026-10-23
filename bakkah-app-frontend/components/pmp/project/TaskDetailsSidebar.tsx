@@ -1,15 +1,17 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { X, AlignLeft, Calendar as CalendarIcon, Save, Loader2, Trash2, CalendarDays, AlertTriangle, Link, ChevronDown, Flag, Calendar } from 'lucide-react';
-import { getStatusUI, getPriorityUI } from './TableView';
-import AssigneeSelect from './AssigneeSelect';
-import TaskComments from './TaskComments';
-import TaskAttachments from './TaskAttachments';
-import TaskActivityLog from './TaskActivityLog';
-import TaskSubtasks from './TaskSubtasks';
+import React from 'react';
+import { X } from 'lucide-react';
 import { Task } from '@/types/pmp.types';
-import { PmpService } from '@/services/pmp.service';
+
+// استدعاء المكونات اللي قسمناها
+import TaskProperties from './TaskProperties';
+import TaskDescription from './TaskDescription';
+import TaskSubtasks from './TaskSubtasks';
+import TaskAttachments from './TaskAttachments';
+import TaskComments from './TaskComments';
+import TaskActivityLog from './TaskActivityLog';
+import TaskDeleteZone from './TaskDeleteZone';
 
 interface Props {
     task: Task | null;
@@ -23,46 +25,17 @@ interface Props {
 }
 
 export default function TaskDetailsSidebar({ task, isOpen, onClose, onUpdate, onDelete, statuses, allTasks, refreshTasks }: Props) {
-    const [description, setDescription] = useState('');
-    const [isSaving, setIsSaving] = useState(false);
-    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-
-    // 🌟 State للقوائم المنسدلة الجديدة
-    const [isStatusOpen, setIsStatusOpen] = useState(false);
-    const [isPriorityOpen, setIsPriorityOpen] = useState(false);
-    const [isDependencyOpen, setIsDependencyOpen] = useState(false);
-
-    useEffect(() => {
-        if (task) {
-            setDescription(task.description || '');
-            setShowDeleteConfirm(false);
-            setIsStatusOpen(false);
-            setIsPriorityOpen(false);
-        }
-    }, [task]);
 
     if (!isOpen || !task) return null;
 
-    const handleSaveDescription = async () => {
-        if (description === task.description) return;
-        setIsSaving(true);
-        try {
-            await onUpdate(task.id, 'description', description);
-        } finally {
-            setIsSaving(false);
-        }
-    };
-
-
     const subtasks = allTasks.filter(t => t.parent_task_id === task.id);
-
 
     return (
         <div className="fixed inset-0 z-50 flex justify-end">
+            {/* الخلفية الضبابية */}
             <div className="fixed inset-0 bg-[#1F2937]/20 backdrop-blur-sm transition-opacity" onClick={onClose} />
 
             <div className="relative w-full max-w-md bg-white h-full shadow-2xl flex flex-col z-10 animate-slide-in-right border-l border-gray-100">
-
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-[#F8FAFC]">
                     <h2 className="text-sm font-black text-[#1E5A7A] uppercase tracking-wider">Task Details</h2>
@@ -71,302 +44,41 @@ export default function TaskDetailsSidebar({ task, isOpen, onClose, onUpdate, on
                     </button>
                 </div>
 
+                {/* المحتوى الداخلي المجمع من الملفات */}
                 <div className="flex-1 overflow-y-auto p-6 space-y-8">
-                    {/* Task Title */}
+
+                    {/* حقل تغيير اسم المهمة الرئيسية */}
                     <div>
                         <input
                             type="text"
                             defaultValue={task.title}
                             onBlur={(e) => {
-                                if (e.target.value.trim() !== '' && e.target.value.trim() !== task.title) {
-                                    onUpdate(task.id, 'title', e.target.value.trim());
+                                const newTitle = e.target.value.trim();
+                                if (newTitle !== '' && newTitle !== task.title) {
+                                    onUpdate(task.id, 'title', newTitle);
                                 }
                             }}
                             onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                    e.currentTarget.blur();
-                                }
+                                if (e.key === 'Enter') e.currentTarget.blur();
                             }}
                             className="text-2xl font-black text-[#1F2937] bg-transparent border border-transparent hover:border-gray-200 focus:bg-white focus:border-[#1E5A7A] focus:ring-4 focus:ring-[#1E5A7A]/10 rounded-xl px-3 py-1.5 -ml-3 w-full transition-all outline-none"
                         />
                     </div>
 
-                    {/* Properties Grid */}
-                    <div className="bg-gray-50/50 p-5 rounded-2xl border border-gray-100 space-y-4">
+                    <TaskProperties task={task} allTasks={allTasks} statuses={statuses} onUpdate={onUpdate} />
 
-                        {/* 🌟 Custom Status Dropdown 🌟 */}
-                        <div className="grid grid-cols-3 items-center gap-4 relative z-40">
-                            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Status</span>
-                            <div className="col-span-2 relative">
-                                <div onClick={() => setIsStatusOpen(!isStatusOpen)} className="cursor-pointer w-fit hover:opacity-80 transition-opacity">
-                                    {getStatusUI(task.status)}
-                                </div>
-                                {isStatusOpen && (
-                                    <>
-                                        <div className="fixed inset-0 z-30" onClick={() => setIsStatusOpen(false)} />
-                                        <div className="absolute top-full left-0 mt-2 w-48 bg-white border border-gray-100 rounded-xl shadow-xl z-50 py-2 animate-fade-in-up">
-                                            {statuses.map(s => (
-                                                <div
-                                                    key={s}
-                                                    onClick={() => { onUpdate(task.id, 'status', s); setIsStatusOpen(false); }}
-                                                    className="px-4 py-2 cursor-pointer hover:bg-gray-50 flex items-center transition-colors"
-                                                >
-                                                    {getStatusUI(s)}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-                        </div>
+                    <TaskDescription taskId={task.id} initialDescription={task.description || ''} onUpdate={onUpdate} />
 
-                        {/* 🌟 Custom Priority Dropdown 🌟 */}
-                        <div className="grid grid-cols-3 items-center gap-4 relative z-30">
-                            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Priority</span>
-                            <div className="col-span-2 relative">
-                                <div onClick={() => setIsPriorityOpen(!isPriorityOpen)} className="cursor-pointer w-fit hover:opacity-80 transition-opacity">
-                                    {getPriorityUI(task.priority)}
-                                </div>
-                                {isPriorityOpen && (
-                                    <>
-                                        <div className="fixed inset-0 z-30" onClick={() => setIsPriorityOpen(false)} />
-                                        <div className="absolute top-full left-0 mt-2 w-40 bg-white border border-gray-100 rounded-xl shadow-xl z-50 py-2 animate-fade-in-up">
-                                            {['Low', 'Medium', 'High'].map(p => (
-                                                <div
-                                                    key={p}
-                                                    onClick={() => { onUpdate(task.id, 'priority', p); setIsPriorityOpen(false); }}
-                                                    className="px-4 py-2 cursor-pointer hover:bg-gray-50 flex items-center transition-colors"
-                                                >
-                                                    {getPriorityUI(p)}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-                        </div>
+                    <TaskSubtasks task={task} subtasks={subtasks} onSubtaskCreated={refreshTasks} onUpdateSubtask={(subId, status) => onUpdate(subId, 'status', status)} />
 
-                        {/* 🌟 Task Dependency (Blocked By) - Custom UI 🌟 */}
-                        <div className="mb-6 relative">
-                            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-2">
-                                <Link size={14} /> Depends On (Blocked By)
-                            </label>
-
-                            <div
-                                onClick={() => setIsDependencyOpen(!isDependencyOpen)}
-                                className="flex items-center justify-between w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-[#1F2937] hover:bg-white hover:border-[#1E5A7A] cursor-pointer transition-all shadow-sm"
-                            >
-                                <span className="truncate">
-                                    {task.depends_on_task_id
-                                        ? allTasks.find(t => t.id === task.depends_on_task_id)?.title || 'Unknown Task'
-                                        : 'None (Can start anytime)'}
-                                </span>
-                                <ChevronDown size={16} className={`text-gray-400 transition-transform ${isDependencyOpen ? 'rotate-180' : ''}`} />
-                            </div>
-
-                            {isDependencyOpen && (
-                                <>
-                                    {/* خلفية شفافة عشان لما تدوسي برة تقفل */}
-                                    <div className="fixed inset-0 z-30" onClick={() => setIsDependencyOpen(false)} />
-
-                                    {/* القائمة نفسها */}
-                                    <div className="absolute top-full left-0 mt-2 w-full bg-white border border-gray-100 rounded-xl shadow-xl z-50 py-2 max-h-60 overflow-y-auto animate-fade-in-up">
-
-                                        <div
-                                            onClick={() => { onUpdate(task.id, 'depends_on_task_id', null); setIsDependencyOpen(false); }}
-                                            className={`px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors flex items-center gap-2 text-sm font-bold border-b border-gray-50 ${!task.depends_on_task_id ? 'text-[#1E5A7A] bg-blue-50/50' : 'text-gray-500'}`}
-                                        >
-                                            None (Can start anytime)
-                                        </div>
-
-                                        {allTasks
-                                            .filter(t => t.id !== task.id && t.depends_on_task_id !== task.id)
-                                            .map(t => (
-                                                <div
-                                                    key={t.id}
-                                                    onClick={() => { onUpdate(task.id, 'depends_on_task_id', t.id); setIsDependencyOpen(false); }}
-                                                    className={`px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-between text-sm font-bold ${task.depends_on_task_id === t.id ? 'text-[#1E5A7A] bg-blue-50/50' : 'text-gray-700'}`}
-                                                >
-                                                    <span className="truncate pr-3">{t.title}</span>
-                                                    <span className={`text-[10px] px-2 py-1 rounded-md border whitespace-nowrap uppercase tracking-wider ${t.status === 'Done' ? 'bg-green-50 text-green-600 border-green-200' :
-                                                        t.status === 'In Progress' ? 'bg-blue-50 text-blue-600 border-blue-200' :
-                                                            'bg-gray-50 text-gray-500 border-gray-200'
-                                                        }`}>
-                                                        {t.status}
-                                                    </span>
-                                                </div>
-                                            ))
-                                        }
-                                    </div>
-                                </>
-                            )}
-
-                            {task.depends_on_task_id && (
-                                <div className="mt-2.5 p-3 bg-orange-50 border border-orange-100 rounded-xl flex items-start gap-2 animate-fade-in-up">
-                                    <AlertTriangle size={16} className="text-orange-500 shrink-0 mt-0.5" />
-                                    <p className="text-xs font-bold text-orange-700 leading-relaxed">
-                                        This task is blocked. It cannot be started or moved in the timeline before its dependency is completed.
-                                    </p>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* 🌟 Milestone Toggle 🌟 */}
-                        <div className="mb-6 flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-xl">
-                            <div className="flex items-center gap-3">
-                                <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${task.is_milestone ? 'bg-[#1E5A7A] text-white shadow-md' : 'bg-white text-gray-400 border border-gray-200'}`}>
-                                    <Flag size={20} className={task.is_milestone ? "fill-current" : ""} />
-                                </div>
-                                <div>
-                                    <h4 className="text-sm font-bold text-[#1F2937]">Mark as Milestone</h4>
-                                    <p className="text-[11px] font-medium text-gray-500 mt-0.5">Zero-duration task for major events</p>
-                                </div>
-                            </div>
-
-                            {/* Toggle Switch */}
-                            <button
-                                onClick={() => onUpdate(task.id, 'is_milestone', !task.is_milestone)}
-                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${task.is_milestone ? 'bg-[#1E5A7A]' : 'bg-gray-300'}`}
-                            >
-                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${task.is_milestone ? 'translate-x-6' : 'translate-x-1'}`} />
-                            </button>
-                        </div>
-
-                        {/* Assignee */}
-                        <div className="grid grid-cols-3 items-center gap-4 pt-2 border-t border-gray-100 relative z-20">
-                            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Assignee</span>
-                            <div className="col-span-2">
-                                <AssigneeSelect
-                                    taskId={task.id}
-                                    projectId={task.project_id}
-                                    currentAssigneeId={task.assignee_id}
-                                    currentTeamId={task.team_id}
-                                    onUpdate={onUpdate}
-                                />
-                            </div>
-                        </div>
-
-                        {/* 🌟 Dates Section 🌟 */}
-                        <div className="mb-6 space-y-4">
-                            {task.is_milestone ? (
-                                // شكل التاريخ لو المهمة Milestone (تاريخ واحد فقط)
-                                <div className="flex items-center justify-between p-3 bg-[#B03052]/5 border border-[#B03052]/20 rounded-xl">
-                                    <label className="flex items-center gap-2 text-xs font-bold text-[#B03052] uppercase tracking-wider">
-                                        <Calendar size={16} /> Milestone Date
-                                    </label>
-                                    <div className="relative">
-                                        <input
-                                            type="date"
-                                            value={task.due_date ? new Date(task.due_date).toISOString().split('T')[0] : ''}
-                                            onChange={(e) => {
-                                                // 🌟 السحر هنا: بنوحد تاريخ البداية والنهاية في نفس اللحظة 🌟
-                                                onUpdate(task.id, 'due_date', e.target.value);
-                                                onUpdate(task.id, 'start_date', e.target.value);
-                                            }}
-                                            className="w-36 px-3 py-1.5 bg-white border border-[#B03052]/20 rounded-lg text-sm font-bold text-[#1F2937] focus:outline-none focus:border-[#B03052] focus:ring-1 focus:ring-[#B03052] transition-all"
-                                        />
-                                    </div>
-                                </div>
-                            ) : (
-                                // شكل التواريخ العادية لو المهمة مش Milestone
-                                <>
-                                    <div className="flex items-center justify-between">
-                                        <label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-wider">
-                                            <Calendar size={16} /> Start
-                                        </label>
-                                        <input
-                                            type="date"
-                                            value={task.start_date ? new Date(task.start_date).toISOString().split('T')[0] : ''}
-                                            onChange={(e) => onUpdate(task.id, 'start_date', e.target.value)}
-                                            className="w-36 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-[#1F2937] focus:bg-white focus:outline-none focus:border-[#1E5A7A]"
-                                        />
-                                    </div>
-
-                                    <div className="flex items-center justify-between">
-                                        <label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-wider">
-                                            <Calendar size={16} /> Due
-                                        </label>
-                                        <input
-                                            type="date"
-                                            value={task.due_date ? new Date(task.due_date).toISOString().split('T')[0] : ''}
-                                            onChange={(e) => onUpdate(task.id, 'due_date', e.target.value)}
-                                            className="w-36 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-[#1F2937] focus:bg-white focus:outline-none focus:border-[#1E5A7A]"
-                                        />
-                                    </div>
-                                </>
-                            )}
-                        </div>
-
-                    </div>
-
-                    {/* Description Area */}
-                    <div>
-                        <div className="flex items-center gap-2 mb-3">
-                            <AlignLeft size={18} className="text-[#1E5A7A]" />
-                            <h3 className="font-extrabold text-[#1F2937]">Description</h3>
-                        </div>
-                        <div className="relative">
-                            <textarea
-                                value={description}
-                                onChange={(e) => setDescription(e.target.value)}
-                                placeholder="Add a more detailed description..."
-                                className="w-full min-h-[160px] p-4 bg-gray-50 border border-gray-200 rounded-2xl text-sm text-[#1F2937] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#1E5A7A]/10 focus:border-[#1E5A7A] transition-all resize-y"
-                            />
-                            <button
-                                onClick={handleSaveDescription}
-                                disabled={isSaving || description === task.description}
-                                className="absolute bottom-4 right-4 bg-[#1E5A7A] hover:bg-[#154560] disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-all flex items-center gap-2"
-                            >
-                                {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Save
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Subtasks Section */}
-                    <TaskSubtasks
-                        task={task}
-                        subtasks={subtasks}
-                        onSubtaskCreated={refreshTasks}
-                        onUpdateSubtask={(subId, status) => onUpdate(subId, 'status', status)}
-                    />
-
-                    {/* Attachments Section */}
                     <TaskAttachments taskId={task.id} />
-                    {/* Comments Section */}
+
                     <TaskComments taskId={task.id} />
-                    {/* Activity Log Section */}
-                    {/* استخدمنا Math.random() كحيلة ذكية لإجبار الكومبوننت على التحديث فوراً بعد أي تعديل */}
+
+                    {/* حيلة الـ key لتحديث الـ Activity أوتوماتيك عند أي تعديل */}
                     <TaskActivityLog key={Math.random()} taskId={task.id} />
 
-                    {/* Delete Area - Custom UI */}
-                    <div className="pt-4 mt-8 border-t border-red-100 pb-8">
-                        {!showDeleteConfirm ? (
-                            <button
-                                onClick={() => setShowDeleteConfirm(true)}
-                                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white border border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 rounded-xl text-sm font-bold transition-all shadow-sm"
-                            >
-                                <Trash2 size={16} /> Delete Task
-                            </button>
-                        ) : (
-                            <div className="p-4 bg-red-50 border border-red-200 rounded-2xl animate-fade-in-up">
-                                <p className="text-sm font-bold text-red-800 mb-4 text-center">Are you sure? This action cannot be undone.</p>
-                                <div className="flex gap-3">
-                                    <button
-                                        onClick={() => setShowDeleteConfirm(false)}
-                                        className="flex-1 px-4 py-2.5 bg-white text-gray-700 border border-gray-200 rounded-xl text-sm font-bold hover:bg-gray-100 transition-colors shadow-sm"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        onClick={() => { setShowDeleteConfirm(false); onDelete(task.id); }}
-                                        className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl text-sm font-bold hover:bg-red-700 transition-colors shadow-sm flex items-center justify-center gap-2"
-                                    >
-                                        <Trash2 size={14} /> Yes, Delete
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-                    </div>
+                    <TaskDeleteZone taskId={task.id} onDelete={onDelete} onClose={onClose} />
 
                 </div>
             </div>

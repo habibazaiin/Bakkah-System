@@ -4,10 +4,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { PmpService } from '@/services/pmp.service';
-import CreateSpaceModal from '@/components/pmp/CreateSpaceModal';
-import CreateProjectModal from '@/components/pmp/CreateProjectModal';
-import CreateFolderModal from '@/components/pmp/CreateFolderModal';
-import SpaceSettingsModal from '@/components/pmp/SpaceSettingsModal';
+import CreateSpaceModal from '@/components/pmp/sidebar/CreateSpaceModal';
+import CreateProjectModal from '@/components/pmp/sidebar/CreateProjectModal';
+import CreateFolderModal from '@/components/pmp/sidebar/CreateFolderModal';
+import SpaceSettingsModal from '@/components/pmp/SpaceSettings/SpaceSettingsModal';
 import { Search, Loader2, Trash2, Folder as FolderIcon, CheckSquare, X } from 'lucide-react';
 import { Space, Project, Folder, Task } from '@/types/pmp.types';
 

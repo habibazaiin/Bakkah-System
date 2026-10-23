@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { LayoutDashboard, FolderKanban, CheckSquare, LogOut } from 'lucide-react';
-import NotificationsPopover from '@/components/pmp/NotificationsPopover';
+import NotificationsPopover from '@/components/pmp/sidebar/NotificationsPopover';
 
 interface Props {
     isSidebarOpen: boolean;

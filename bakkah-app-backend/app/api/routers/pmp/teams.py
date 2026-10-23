@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from app.schemas.team import TeamCreate, TeamMemberAdd
+from app.schemas.team import TeamCreate, TeamMemberAdd, TeamUpdate
 from app.services.team_service import TeamService
 from app.api.dependencies import get_current_user
 from app.core.database import supabase
@@ -39,3 +39,8 @@ async def add_team_member(space_id: str, team_id: str, payload: TeamMemberAdd, c
 async def remove_team_member(space_id: str, team_id: str, user_id: str, current_user = Depends(get_current_user)):
     require_admin_or_owner(space_id, str(current_user.id))
     return TeamService.remove_member_from_team(team_id, user_id)
+
+@router.patch("/{space_id}/{team_id}")
+async def update_team(space_id: str, team_id: str, team_data: TeamUpdate, current_user = Depends(get_current_user)):
+    require_admin_or_owner(space_id, str(current_user.id))
+    return TeamService.update_team(team_id, team_data.name)

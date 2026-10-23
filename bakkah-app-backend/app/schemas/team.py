@@ -7,5 +7,8 @@ class TeamCreate(BaseModel):
     name: str
     description: Optional[str] = ""
 
+class TeamUpdate(BaseModel):
+    name: str
+
 class TeamMemberAdd(BaseModel):
     user_id: UUID

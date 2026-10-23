@@ -416,5 +416,18 @@ export const PmpService = {
         if (!response.ok) throw new Error('Failed to delete comment');
     },
 
-
+    // 🌟 تعديل اسم الفريق
+    async updateTeam(spaceId: string, teamId: string, name: string): Promise<any> {
+        const headers = await this.getHeaders();
+        const response = await fetch(`${API_URL}/teams/${spaceId}/${teamId}`, {
+            method: 'PATCH',
+            headers: {
+                ...headers,
+                'Content-Type': 'application/json' // 🌟 السطر ده اللي كان ناقص وبيعمل المشكلة
+            },
+            body: JSON.stringify({ name })
+        });
+        if (!response.ok) throw new Error('Failed to update team');
+        return response.json();
+    },
 };
