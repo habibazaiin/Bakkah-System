@@ -14,6 +14,7 @@ class TaskCreate(BaseModel):
     start_date: Optional[date] = None
     due_date: Optional[date] = None
     depends_on_task_id: Optional[str] = None  # 🌟 الحقل الجديد بتاع الاعتماديات (Dependencies)
+    is_milestone: Optional[bool] = False
 
 class TaskResponse(TaskCreate):
     id: str  # 🌟 اتعدلت لـ str
@@ -35,3 +36,4 @@ class TaskUpdate(BaseModel):
     assignee_id: Optional[str] = None 
     team_id: Optional[str] = None
     depends_on_task_id: Optional[str] = None  # 🌟 الحقل الجديد هنا كمان
+    is_milestone: Optional[bool] = None

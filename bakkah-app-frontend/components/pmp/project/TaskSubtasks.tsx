@@ -38,6 +38,16 @@ export default function TaskSubtasks({ task, subtasks, onSubtaskCreated, onUpdat
         }
     };
 
+    const handleRenameSubtask = async (subtaskId: string, newTitle: string) => {
+        if (!newTitle.trim()) return;
+        try {
+            await PmpService.updateTask(subtaskId, { title: newTitle.trim() });
+            onSubtaskCreated(); // نستدعيها لعمل ريفريش للواجهة
+        } catch (error) {
+            console.error("Error renaming subtask:", error);
+        }
+    };
+
     const completedCount = subtasks.filter(s => s.status === 'Done').length;
     const progressPercent = subtasks.length > 0 ? Math.round((completedCount / subtasks.length) * 100) : 0;
 
@@ -51,14 +61,12 @@ export default function TaskSubtasks({ task, subtasks, onSubtaskCreated, onUpdat
                 <span className="text-xs font-bold text-gray-400">{completedCount} of {subtasks.length} ({progressPercent}%)</span>
             </div>
 
-            {/* Progress Bar */}
             {subtasks.length > 0 && (
                 <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden mb-4">
                     <div className="h-full bg-[#1E5A7A] rounded-full transition-all duration-500" style={{ width: `${progressPercent}%` }} />
                 </div>
             )}
 
-            {/* Subtasks List */}
             <div className="space-y-2 mb-4">
                 {subtasks.map((sub) => {
                     const isDone = sub.status === 'Done';
@@ -71,16 +79,29 @@ export default function TaskSubtasks({ task, subtasks, onSubtaskCreated, onUpdat
                                 >
                                     {isDone ? <CheckCircle2 size={16} className="text-green-600" /> : <Circle size={16} />}
                                 </button>
-                                <span className={`text-sm font-bold truncate ${isDone ? 'line-through text-gray-400' : 'text-[#1F2937]'}`}>
-                                    {sub.title}
-                                </span>
+
+                                {/* 🌟 حقل تعديل اسم المهام الفرعية 🌟 */}
+                                <input
+                                    type="text"
+                                    defaultValue={sub.title}
+                                    onBlur={(e) => {
+                                        if (e.target.value !== sub.title) {
+                                            handleRenameSubtask(sub.id, e.target.value);
+                                        }
+                                    }}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            e.currentTarget.blur();
+                                        }
+                                    }}
+                                    className={`w-full bg-transparent border-none focus:ring-0 p-0 text-sm font-bold truncate outline-none ${isDone ? 'line-through text-gray-400' : 'text-[#1F2937] focus:text-[#1E5A7A]'}`}
+                                />
                             </div>
                         </div>
                     );
                 })}
             </div>
 
-            {/* Add Subtask Form */}
             <form onSubmit={handleCreateSubtask} className="flex items-center gap-2">
                 <input
                     type="text"

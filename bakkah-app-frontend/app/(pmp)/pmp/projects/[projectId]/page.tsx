@@ -27,6 +27,10 @@ export default function ProjectPage() {
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
     const [blockedWarning, setBlockedWarning] = useState<{ isOpen: boolean, taskName: string } | null>(null);
 
+    // 🌟 States جديدة للفرق والمستخدمين 🌟
+    const [teams, setTeams] = useState<any[]>([]);
+    const [users, setUsers] = useState<any[]>([]);
+
     const mainTasks = tasks.filter(t => !t.parent_task_id);
     const projectProgress = mainTasks.length > 0 ? Math.round((mainTasks.filter(t => t.status === 'Done').length / mainTasks.length) * 100) : 0;
     const dynamicProjectStatus = mainTasks.length === 0 ? 'To Do' : (projectProgress === 100 ? 'Done' : 'In Progress');
@@ -40,6 +44,14 @@ export default function ProjectPage() {
             const allProjects = await PmpService.getProjects();
             const currentProj = allProjects.find((p: any) => p.id === projectId);
             if (currentProj) setProject(currentProj);
+
+            // 🌟 جلب بيانات الفرق والمستخدمين لترجمة الـ IDs في الـ Gantt 🌟
+            const { data: usersData } = await supabase.from('users').select('*');
+            if (usersData) setUsers(usersData);
+
+            const { data: teamsData } = await supabase.from('teams').select('*');
+            if (teamsData) setTeams(teamsData);
+
         } catch (error) {
             console.error("Error fetching data:", error);
         } finally {
@@ -51,7 +63,6 @@ export default function ProjectPage() {
         if (projectId) fetchData();
     }, [projectId]);
 
-    // 🌟 Real-time شامل للمشروع بالأسماء الصحيحة
     useEffect(() => {
         if (!projectId) return;
 
@@ -66,7 +77,7 @@ export default function ProjectPage() {
                     filter: `project_id=eq.${projectId}`
                 },
                 () => {
-                    fetchData(); // تحديث المهام فوراً
+                    fetchData();
                 }
             )
             .on(
@@ -74,10 +85,10 @@ export default function ProjectPage() {
                 {
                     event: '*',
                     schema: 'public',
-                    table: 'task_comments' // 👈 اتعدلت هنا
+                    table: 'task_comments'
                 },
                 () => {
-                    fetchData(); // تحديث لو حد كتب كومنت
+                    fetchData();
                 }
             )
             .subscribe();
@@ -87,15 +98,12 @@ export default function ProjectPage() {
         };
     }, [projectId]);
 
-    // 🌟 ده هيخلي الشاشة الجانبية (Task Details) تتحدث فوراً عند اليوزر التاني لو كان فاتحها
     useEffect(() => {
         if (selectedTask) {
             const updatedTask = tasks.find(t => t.id === selectedTask.id);
-            // لو التأسك اتحدثت في الخلفية، حدث الشاشة المفتوحة
             if (updatedTask && JSON.stringify(updatedTask) !== JSON.stringify(selectedTask)) {
                 setSelectedTask(updatedTask);
             }
-            // لو التأسك اتمسحت من اليوزر التاني، اقفل الشاشة
             if (!updatedTask && tasks.length > 0) {
                 setSelectedTask(null);
             }
@@ -115,14 +123,12 @@ export default function ProjectPage() {
     };
 
     const handleUpdateTask = async (taskId: string, field: string, value: string) => {
-        // فحص الاعتماديات (Dependency Check)
         if (field === 'status' && value !== 'To Do') {
             const taskToUpdate = tasks.find(t => t.id === taskId);
             if (taskToUpdate && taskToUpdate.depends_on_task_id) {
                 const dependentTask = tasks.find(t => t.id === taskToUpdate.depends_on_task_id);
 
                 if (dependentTask && dependentTask.status !== 'Done') {
-                    // 🌟 هنا شيلنا الـ alert وحطينا الـ Custom UI State 🌟
                     setBlockedWarning({ isOpen: true, taskName: dependentTask.title });
                     return;
                 }
@@ -172,12 +178,10 @@ export default function ProjectPage() {
             case 'kanban':
                 return <KanbanView tasks={mainTasks} allTasks={tasks} isLoading={isLoadingData} onUpdate={handleUpdateTask} onTaskClick={setSelectedTask} statuses={project?.statuses || ['To Do', 'In Progress', 'Done']} onAddStatus={handleAddStatus} />;
             case 'gantt':
-                return <GanttView tasks={mainTasks} isLoading={isLoadingData} onTaskClick={setSelectedTask} onUpdate={handleUpdateTask} />;
-
-            // 🌟 السطر ده اللي كان ناقص عشان الشاشة متكونش بيضا 🌟
+                // 🌟 تمرير بيانات الفرق والمستخدمين للـ Gantt هنا 🌟
+                return <GanttView tasks={mainTasks} isLoading={isLoadingData} onTaskClick={setSelectedTask} onUpdate={handleUpdateTask} users={users} teams={teams} />;
             case 'calendar':
                 return <CalendarView tasks={mainTasks} isLoading={isLoadingData} onTaskClick={setSelectedTask} />;
-
             case 'metrics':
                 return <MetricsView tasks={mainTasks} isLoading={isLoadingData} />;
             case 'ai':
@@ -216,15 +220,11 @@ export default function ProjectPage() {
                 </div>
             </div>
 
-            {/* شريط التنقل بين الشاشات (Tabs) */}
             <div className="flex items-center gap-2 border-b border-gray-200 pb-px overflow-x-auto hide-scrollbar">
                 <button onClick={() => setActiveView('table')} className={`flex items-center gap-2 px-5 py-3.5 text-sm font-bold transition-all border-b-2 whitespace-nowrap ${activeView === 'table' ? 'border-[#1E5A7A] text-[#1E5A7A]' : 'border-transparent text-gray-500 hover:text-gray-800 hover:bg-gray-50 rounded-t-xl'}`}><List size={18} strokeWidth={2.5} /> Table</button>
                 <button onClick={() => setActiveView('kanban')} className={`flex items-center gap-2 px-5 py-3.5 text-sm font-bold transition-all border-b-2 whitespace-nowrap ${activeView === 'kanban' ? 'border-[#1E5A7A] text-[#1E5A7A]' : 'border-transparent text-gray-500 hover:text-gray-800 hover:bg-gray-50 rounded-t-xl'}`}><LayoutTemplate size={18} strokeWidth={2.5} /> Kanban</button>
                 <button onClick={() => setActiveView('gantt')} className={`flex items-center gap-2 px-5 py-3.5 text-sm font-bold transition-all border-b-2 whitespace-nowrap ${activeView === 'gantt' ? 'border-[#1E5A7A] text-[#1E5A7A]' : 'border-transparent text-gray-500 hover:text-gray-800 hover:bg-gray-50 rounded-t-xl'}`}><CalendarDays size={18} strokeWidth={2.5} /> Gantt</button>
-
-                {/* 🌟 زرار الكاليندر اهو 🌟 */}
                 <button onClick={() => setActiveView('calendar')} className={`flex items-center gap-2 px-5 py-3.5 text-sm font-bold transition-all border-b-2 whitespace-nowrap ${activeView === 'calendar' ? 'border-[#1E5A7A] text-[#1E5A7A]' : 'border-transparent text-gray-500 hover:text-gray-800 hover:bg-gray-50 rounded-t-xl'}`}><Calendar size={18} strokeWidth={2.5} /> Calendar</button>
-
                 <button onClick={() => setActiveView('metrics')} className={`flex items-center gap-2 px-5 py-3.5 text-sm font-bold transition-all border-b-2 whitespace-nowrap ${activeView === 'metrics' ? 'border-[#1E5A7A] text-[#1E5A7A]' : 'border-transparent text-gray-500 hover:text-gray-800 hover:bg-gray-50 rounded-t-xl'}`}><LineChart size={18} strokeWidth={2.5} /> Metrics</button>
                 <button onClick={() => setActiveView('ai')} className={`flex items-center gap-2 px-5 py-3.5 text-sm font-bold transition-all border-b-2 whitespace-nowrap ${activeView === 'ai' ? 'border-[#B03052] text-[#B03052]' : 'border-transparent text-gray-500 hover:text-[#B03052] hover:bg-red-50 rounded-t-xl'}`}><Sparkles size={18} strokeWidth={2.5} /> AI Health</button>
             </div>
@@ -242,7 +242,6 @@ export default function ProjectPage() {
                 refreshTasks={fetchData}
             />
 
-            {/* 🌟 Custom Blocked Task Warning Modal 🌟 */}
             {blockedWarning && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                     <div className="fixed inset-0 bg-[#1F2937]/60 backdrop-blur-sm transition-opacity" onClick={() => setBlockedWarning(null)} />

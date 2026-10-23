@@ -12,3 +12,7 @@ async def add_comment(comment: CommentCreate, current_user = Depends(get_current
 @router.get("/{task_id}")
 async def get_comments(task_id: str, current_user = Depends(get_current_user)):
     return CommentService.get_task_comments(task_id)
+
+@router.delete("/{comment_id}")
+async def delete_comment(comment_id: str, current_user = Depends(get_current_user)):
+    return CommentService.delete_comment(comment_id, current_user.id)

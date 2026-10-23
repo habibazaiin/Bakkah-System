@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, AlignLeft, Calendar as CalendarIcon, Save, Loader2, Trash2, CalendarDays, AlertTriangle, Link, ChevronDown } from 'lucide-react';
+import { X, AlignLeft, Calendar as CalendarIcon, Save, Loader2, Trash2, CalendarDays, AlertTriangle, Link, ChevronDown, Flag, Calendar } from 'lucide-react';
 import { getStatusUI, getPriorityUI } from './TableView';
 import AssigneeSelect from './AssigneeSelect';
 import TaskComments from './TaskComments';
@@ -9,6 +9,7 @@ import TaskAttachments from './TaskAttachments';
 import TaskActivityLog from './TaskActivityLog';
 import TaskSubtasks from './TaskSubtasks';
 import { Task } from '@/types/pmp.types';
+import { PmpService } from '@/services/pmp.service';
 
 interface Props {
     task: Task | null;
@@ -52,7 +53,9 @@ export default function TaskDetailsSidebar({ task, isOpen, onClose, onUpdate, on
         }
     };
 
+
     const subtasks = allTasks.filter(t => t.parent_task_id === task.id);
+
 
     return (
         <div className="fixed inset-0 z-50 flex justify-end">
@@ -74,8 +77,17 @@ export default function TaskDetailsSidebar({ task, isOpen, onClose, onUpdate, on
                         <input
                             type="text"
                             defaultValue={task.title}
-                            onBlur={(e) => { if (e.target.value.trim() && e.target.value !== task.title) onUpdate(task.id, 'title', e.target.value) }}
-                            className="w-full text-2xl font-black text-[#1F2937] leading-tight bg-transparent border-2 border-transparent hover:border-gray-200 focus:border-[#1E5A7A] focus:ring-4 focus:ring-[#1E5A7A]/10 rounded-xl px-2 py-1 -ml-2 transition-all outline-none"
+                            onBlur={(e) => {
+                                if (e.target.value.trim() !== '' && e.target.value.trim() !== task.title) {
+                                    onUpdate(task.id, 'title', e.target.value.trim());
+                                }
+                            }}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    e.currentTarget.blur();
+                                }
+                            }}
+                            className="text-2xl font-black text-[#1F2937] bg-transparent border border-transparent hover:border-gray-200 focus:bg-white focus:border-[#1E5A7A] focus:ring-4 focus:ring-[#1E5A7A]/10 rounded-xl px-3 py-1.5 -ml-3 w-full transition-all outline-none"
                         />
                     </div>
 
@@ -199,6 +211,27 @@ export default function TaskDetailsSidebar({ task, isOpen, onClose, onUpdate, on
                             )}
                         </div>
 
+                        {/* 🌟 Milestone Toggle 🌟 */}
+                        <div className="mb-6 flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-xl">
+                            <div className="flex items-center gap-3">
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${task.is_milestone ? 'bg-[#1E5A7A] text-white shadow-md' : 'bg-white text-gray-400 border border-gray-200'}`}>
+                                    <Flag size={20} className={task.is_milestone ? "fill-current" : ""} />
+                                </div>
+                                <div>
+                                    <h4 className="text-sm font-bold text-[#1F2937]">Mark as Milestone</h4>
+                                    <p className="text-[11px] font-medium text-gray-500 mt-0.5">Zero-duration task for major events</p>
+                                </div>
+                            </div>
+
+                            {/* Toggle Switch */}
+                            <button
+                                onClick={() => onUpdate(task.id, 'is_milestone', !task.is_milestone)}
+                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${task.is_milestone ? 'bg-[#1E5A7A]' : 'bg-gray-300'}`}
+                            >
+                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${task.is_milestone ? 'translate-x-6' : 'translate-x-1'}`} />
+                            </button>
+                        </div>
+
                         {/* Assignee */}
                         <div className="grid grid-cols-3 items-center gap-4 pt-2 border-t border-gray-100 relative z-20">
                             <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Assignee</span>
@@ -213,29 +246,55 @@ export default function TaskDetailsSidebar({ task, isOpen, onClose, onUpdate, on
                             </div>
                         </div>
 
-                        {/* Dates */}
-                        <div className="grid grid-cols-3 items-center gap-4 pt-2 border-t border-gray-100 relative z-10">
-                            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5"><CalendarDays size={14} /> Start</span>
-                            <div className="col-span-2">
-                                <input
-                                    type="date"
-                                    value={task.start_date || ''}
-                                    onChange={(e) => onUpdate(task.id, 'start_date', e.target.value || null)}
-                                    className="text-sm font-bold text-[#1F2937] bg-transparent cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#1E5A7A]/20 rounded-md p-1"
-                                />
-                            </div>
-                        </div>
+                        {/* 🌟 Dates Section 🌟 */}
+                        <div className="mb-6 space-y-4">
+                            {task.is_milestone ? (
+                                // شكل التاريخ لو المهمة Milestone (تاريخ واحد فقط)
+                                <div className="flex items-center justify-between p-3 bg-[#B03052]/5 border border-[#B03052]/20 rounded-xl">
+                                    <label className="flex items-center gap-2 text-xs font-bold text-[#B03052] uppercase tracking-wider">
+                                        <Calendar size={16} /> Milestone Date
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            type="date"
+                                            value={task.due_date ? new Date(task.due_date).toISOString().split('T')[0] : ''}
+                                            onChange={(e) => {
+                                                // 🌟 السحر هنا: بنوحد تاريخ البداية والنهاية في نفس اللحظة 🌟
+                                                onUpdate(task.id, 'due_date', e.target.value);
+                                                onUpdate(task.id, 'start_date', e.target.value);
+                                            }}
+                                            className="w-36 px-3 py-1.5 bg-white border border-[#B03052]/20 rounded-lg text-sm font-bold text-[#1F2937] focus:outline-none focus:border-[#B03052] focus:ring-1 focus:ring-[#B03052] transition-all"
+                                        />
+                                    </div>
+                                </div>
+                            ) : (
+                                // شكل التواريخ العادية لو المهمة مش Milestone
+                                <>
+                                    <div className="flex items-center justify-between">
+                                        <label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                            <Calendar size={16} /> Start
+                                        </label>
+                                        <input
+                                            type="date"
+                                            value={task.start_date ? new Date(task.start_date).toISOString().split('T')[0] : ''}
+                                            onChange={(e) => onUpdate(task.id, 'start_date', e.target.value)}
+                                            className="w-36 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-[#1F2937] focus:bg-white focus:outline-none focus:border-[#1E5A7A]"
+                                        />
+                                    </div>
 
-                        <div className="grid grid-cols-3 items-center gap-4 relative z-0">
-                            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5"><CalendarIcon size={14} /> Due</span>
-                            <div className="col-span-2">
-                                <input
-                                    type="date"
-                                    value={task.due_date || ''}
-                                    onChange={(e) => onUpdate(task.id, 'due_date', e.target.value || null)}
-                                    className="text-sm font-bold text-[#1F2937] bg-transparent cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#1E5A7A]/20 rounded-md p-1"
-                                />
-                            </div>
+                                    <div className="flex items-center justify-between">
+                                        <label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                            <Calendar size={16} /> Due
+                                        </label>
+                                        <input
+                                            type="date"
+                                            value={task.due_date ? new Date(task.due_date).toISOString().split('T')[0] : ''}
+                                            onChange={(e) => onUpdate(task.id, 'due_date', e.target.value)}
+                                            className="w-36 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-[#1F2937] focus:bg-white focus:outline-none focus:border-[#1E5A7A]"
+                                        />
+                                    </div>
+                                </>
+                            )}
                         </div>
 
                     </div>

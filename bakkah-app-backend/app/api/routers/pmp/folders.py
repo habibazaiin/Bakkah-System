@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from typing import List
-from app.schemas.folder import FolderCreate, FolderResponse
+from app.schemas.folder import FolderCreate, FolderResponse, FolderUpdate
 from app.services.folder_service import FolderService
 from app.api.dependencies import get_current_user
 
@@ -13,6 +13,11 @@ async def create_folder(folder: FolderCreate, current_user = Depends(get_current
 @router.get("/{space_id}", response_model=List[FolderResponse])
 async def get_space_folders(space_id: str, current_user = Depends(get_current_user)):
     return FolderService.get_space_folders(space_id)
+
+# 🌟 الـ Endpoint الجديدة للتعديل 🌟
+@router.patch("/{folder_id}", response_model=FolderResponse)
+async def update_folder(folder_id: str, folder: FolderUpdate, current_user = Depends(get_current_user)):
+    return FolderService.update_folder(folder_id, folder)
 
 @router.delete("/{folder_id}")
 async def delete_folder(folder_id: str, current_user = Depends(get_current_user)):

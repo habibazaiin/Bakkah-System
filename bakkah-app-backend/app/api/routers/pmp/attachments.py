@@ -16,3 +16,8 @@ async def upload_file(
 @router.get("/{task_id}")
 async def get_attachments(task_id: str, current_user = Depends(get_current_user)):
     return AttachmentService.get_task_attachments(task_id)
+
+
+@router.delete("/{attachment_id}")
+async def delete_attachment(attachment_id: str, current_user = Depends(get_current_user)):
+    return AttachmentService.delete_attachment(attachment_id, str(current_user.id))

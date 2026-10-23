@@ -7,6 +7,10 @@ class FolderCreate(BaseModel):
     name: str
     space_id: UUID
 
+# 🌟 Schema جديدة للتعديل 🌟
+class FolderUpdate(BaseModel):
+    name: str
+
 class FolderResponse(FolderCreate):
     id: UUID
     created_at: Optional[datetime] = None

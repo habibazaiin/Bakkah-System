@@ -44,6 +44,7 @@ export interface Task {
     updated_at?: string;
     subtasks?: Task[]; // لربط المهام الفرعية بالشاشة
     depends_on_task_id?: string;
+    is_milestone?: boolean;
 }
 
 export interface Comment {

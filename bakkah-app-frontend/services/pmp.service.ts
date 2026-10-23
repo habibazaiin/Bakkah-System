@@ -34,6 +34,18 @@ export const PmpService = {
         return response.json();
     },
 
+    async updateSpace(id: string, data: { name?: string; description?: string }): Promise<Space> {
+        const headers = await this.getHeaders();
+        // تأكدي إن API_URL متعرف عندك في الملف زي ما هو في updateProject
+        const response = await fetch(`${API_URL}/spaces/${id}`, {
+            method: 'PATCH',
+            headers,
+            body: JSON.stringify(data)
+        });
+        if (!response.ok) throw new Error('Failed to update space');
+        return response.json();
+    },
+
     async getProjects(): Promise<Project[]> {
         const headers = await this.getHeaders();
         const response = await fetch(`${API_URL}/projects/`, { method: 'GET', headers });
@@ -156,6 +168,20 @@ export const PmpService = {
         return response.json();
     },
 
+    // 🌟 دالة حذف المرفقات 🌟
+    async deleteAttachment(attachmentId: string): Promise<void> {
+        const headers = await this.getHeaders();
+        // تأكدي إن المسار ده بيطابق الـ Prefix اللي في الباك إند عندك (مثلاً /attachments أو /tasks/attachments)
+        const response = await fetch(`${API_URL}/attachments/${attachmentId}`, {
+            method: 'DELETE',
+            headers
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to delete attachment');
+        }
+    },
+
     async getTaskActivities(taskId: string): Promise<Activity[]> {
         const headers = await this.getHeaders();
         const response = await fetch(`${API_URL}/activities/${taskId}`, { headers });
@@ -186,6 +212,17 @@ export const PmpService = {
         const headers = await this.getHeaders();
         const response = await fetch(`${API_URL}/folders/${folderId}`, { method: 'DELETE', headers });
         if (!response.ok) throw new Error('Failed to delete folder');
+        return response.json();
+    },
+
+    async updateFolder(id: string, data: { name?: string }): Promise<Folder> {
+        const headers = await this.getHeaders();
+        const response = await fetch(`${API_URL}/folders/${id}`, {
+            method: 'PATCH',
+            headers,
+            body: JSON.stringify(data)
+        });
+        if (!response.ok) throw new Error('Failed to update folder');
         return response.json();
     },
 
@@ -367,5 +404,17 @@ export const PmpService = {
             headers
         });
         if (!response.ok) throw new Error('Failed to delete notification');
-    }
+    },
+
+    // 🌟 حذف تعليق
+    async deleteComment(commentId: string): Promise<void> {
+        const headers = await this.getHeaders();
+        const response = await fetch(`${API_URL}/comments/${commentId}`, {
+            method: 'DELETE',
+            headers
+        });
+        if (!response.ok) throw new Error('Failed to delete comment');
+    },
+
+
 };

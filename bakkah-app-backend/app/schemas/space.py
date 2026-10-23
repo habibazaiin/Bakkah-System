@@ -1,4 +1,3 @@
-# app/schemas/space.py
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
@@ -12,6 +11,13 @@ class SpaceBase(BaseModel):
 
 class SpaceCreate(SpaceBase):
     pass
+
+# 🌟 Schema جديدة للتعديل (كل الحقول اختيارية عشان يقدر يعدل الاسم بس لو حابب) 🌟
+class SpaceUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    icon: Optional[str] = None
+    color: Optional[str] = None
 
 class SpaceResponse(SpaceBase):
     id: UUID

@@ -55,3 +55,20 @@ class CommentService:
             print(f"🔥 COMMENTS ERROR: {str(e)}")
             traceback.print_exc() # ده هيطبع تفاصيل الإيرور بالكامل
             raise HTTPException(status_code=400, detail=str(e))
+
+
+    @staticmethod
+    def delete_comment(comment_id: str, user_id: str):
+        try:
+            # التحقق من أن التعليق يخص المستخدم (اختياري حسب الـ Business Logic)
+            comment_res = supabase.table("task_comments").select("*").eq("id", comment_id).execute()
+            if not comment_res.data:
+                raise HTTPException(status_code=404, detail="Comment not found")
+                
+            task_id = comment_res.data[0]["task_id"]
+            
+            supabase.table("task_comments").delete().eq("id", comment_id).execute()
+            ActivityService.log_activity(task_id, user_id, "deleted a comment", "")
+            return {"message": "Comment deleted successfully"}
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))

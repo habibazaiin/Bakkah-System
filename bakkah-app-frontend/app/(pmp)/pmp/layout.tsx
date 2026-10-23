@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { PmpService } from '@/services/pmp.service';
@@ -8,10 +8,9 @@ import CreateSpaceModal from '@/components/pmp/CreateSpaceModal';
 import CreateProjectModal from '@/components/pmp/CreateProjectModal';
 import CreateFolderModal from '@/components/pmp/CreateFolderModal';
 import SpaceSettingsModal from '@/components/pmp/SpaceSettingsModal';
-import { Search, Loader2, Trash2 } from 'lucide-react';
-import { Space, Project, Folder } from '@/types/pmp.types';
+import { Search, Loader2, Trash2, Folder as FolderIcon, CheckSquare, X } from 'lucide-react';
+import { Space, Project, Folder, Task } from '@/types/pmp.types';
 
-// استدعاء مكونات السايد بار الجديدة
 import PrimarySidebar from '@/components/pmp/sidebar/PrimarySidebar';
 import WorkspaceSidebar from '@/components/pmp/sidebar/WorkspaceSidebar';
 
@@ -22,6 +21,8 @@ export default function PmpLayout({ children }: { children: React.ReactNode }) {
     const [spaces, setSpaces] = useState<Space[]>([]);
     const [projects, setProjects] = useState<Project[]>([]);
     const [folders, setFolders] = useState<Folder[]>([]);
+    // 🌟 إضافة state للتاسكات عشان البحث 🌟
+    const [allTasks, setAllTasks] = useState<Task[]>([]);
     const [isLoadingData, setIsLoadingData] = useState(false);
 
     const [expandedSpaces, setExpandedSpaces] = useState<Record<string, boolean>>({});
@@ -38,6 +39,11 @@ export default function PmpLayout({ children }: { children: React.ReactNode }) {
     const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
+    // 🌟 States الخاصة بالبحث 🌟
+    const [searchQuery, setSearchQuery] = useState('');
+    const [isSearchOpen, setIsSearchOpen] = useState(false);
+    const searchRef = useRef<HTMLDivElement>(null);
+
     const router = useRouter();
     const pathname = usePathname();
 
@@ -53,9 +59,13 @@ export default function PmpLayout({ children }: { children: React.ReactNode }) {
             const foldersArrays = await Promise.all(foldersPromises);
             const fetchedFolders = foldersArrays.flat();
 
+            // 🌟 جلب كل المهام للبحث 🌟
+            const { data: fetchedTasks } = await supabase.from('tasks').select('*');
+
             setSpaces(fetchedSpaces);
             setProjects(fetchedProjects);
             setFolders(fetchedFolders);
+            if (fetchedTasks) setAllTasks(fetchedTasks);
 
             if (fetchedSpaces.length > 0 && Object.keys(expandedSpaces).length === 0) {
                 setExpandedSpaces({ [fetchedSpaces[0].id]: true });
@@ -86,9 +96,21 @@ export default function PmpLayout({ children }: { children: React.ReactNode }) {
             .on('postgres_changes', { event: '*', schema: 'public', table: 'spaces' }, () => fetchData())
             .on('postgres_changes', { event: '*', schema: 'public', table: 'folders' }, () => fetchData())
             .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, () => fetchData())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => fetchData()) // تحديث مهام البحث
             .subscribe();
 
         return () => { supabase.removeChannel(channel); };
+    }, []);
+
+    // 🌟 إغلاق قائمة البحث عند الضغط خارجها 🌟
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+                setIsSearchOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
     const toggleSpace = (id: string, e: React.MouseEvent) => {
@@ -133,6 +155,10 @@ export default function PmpLayout({ children }: { children: React.ReactNode }) {
         } finally { setIsDeleting(false); }
     };
 
+    // 🌟 لوجيك الفلترة للبحث 🌟
+    const filteredProjects = projects.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
+    const filteredTasks = allTasks.filter(t => t.title.toLowerCase().includes(searchQuery.toLowerCase()));
+
     if (isAuthLoading) {
         return (
             <div className="flex h-screen w-full items-center justify-center bg-[#F8FAFC]">
@@ -143,17 +169,33 @@ export default function PmpLayout({ children }: { children: React.ReactNode }) {
         );
     }
 
+    // 🌟 حساب اسم الهيدر أو الـ Workspace الديناميكي 🌟
+    let headerTitle = 'Workspace';
+    if (pathname === '/pmp') {
+        headerTitle = 'Overview';
+    } else if (pathname === '/pmp/my-tasks') {
+        headerTitle = 'My Tasks';
+    } else if (pathname.includes('/pmp/projects/')) {
+        const currentProjectId = pathname.split('/').pop();
+        const currentProject = projects.find(p => p.id === currentProjectId);
+        if (currentProject) {
+            const currentSpace = spaces.find(s => s.id === currentProject.space_id);
+            if (currentSpace) {
+                headerTitle = currentSpace.name;
+            }
+        }
+    }
+
     return (
         <div className="flex h-screen bg-[#F8FAFC] overflow-hidden font-sans text-[#1F2937] selection:bg-[#1E5A7A] selection:text-white">
 
-            {/* استخدام السايد بار المجزأ الجديد */}
-            <PrimarySidebar 
-                isSidebarOpen={isSidebarOpen} 
-                setIsSidebarOpen={setIsSidebarOpen} 
-                pathname={pathname} 
+            <PrimarySidebar
+                isSidebarOpen={isSidebarOpen}
+                setIsSidebarOpen={setIsSidebarOpen}
+                pathname={pathname}
             />
 
-            <WorkspaceSidebar 
+            <WorkspaceSidebar
                 isSidebarOpen={isSidebarOpen}
                 spaces={spaces}
                 projects={projects}
@@ -172,19 +214,97 @@ export default function PmpLayout({ children }: { children: React.ReactNode }) {
                 setSpaceToDelete={setSpaceToDelete}
                 setFolderToDelete={setFolderToDelete}
                 setProjectToDelete={setProjectToDelete}
+                refreshData={fetchData}
             />
 
             {/* Main Content Area */}
             <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative bg-[#F8FAFC]">
                 <header className="h-20 bg-white/60 backdrop-blur-xl border-b border-gray-200 flex items-center justify-between px-8 shrink-0 sticky top-0 z-10">
                     <div className="flex items-center gap-4">
-                        <h1 className="text-xl font-extrabold text-[#1F2937] tracking-tight">Overview</h1>
+                        <h1 className="text-xl font-extrabold text-[#1F2937] tracking-tight">
+                            {headerTitle}
+                        </h1>
                     </div>
-                    <div className="flex items-center gap-5">
-                        <div className="relative group">
-                            <Search className="absolute left-3.5 top-2.5 text-gray-400 group-focus-within:text-[#1E5A7A] transition-colors" size={18} />
-                            <input type="text" placeholder="Search everything..." className="bg-white border border-gray-200 text-sm rounded-full pl-10 pr-4 py-2 focus:outline-none focus:border-[#1E5A7A] focus:ring-4 focus:ring-[#1E5A7A]/10 transition-all w-64 shadow-sm" />
+                    <div className="flex items-center gap-5 relative">
+
+                        {/* 🌟 Global Search Bar 🌟 */}
+                        <div className="relative group" ref={searchRef}>
+                            <Search className={`absolute left-3.5 top-2.5 transition-colors ${isSearchOpen ? 'text-[#1E5A7A]' : 'text-gray-400 group-focus-within:text-[#1E5A7A]'}`} size={18} />
+
+                            <input
+                                type="text"
+                                placeholder="Search projects, tasks..."
+                                value={searchQuery}
+                                onChange={(e) => {
+                                    setSearchQuery(e.target.value);
+                                    setIsSearchOpen(true);
+                                }}
+                                onFocus={() => setIsSearchOpen(true)}
+                                className={`bg-white border text-sm rounded-full pl-10 pr-10 py-2 focus:outline-none transition-all shadow-sm ${isSearchOpen ? 'border-[#1E5A7A] ring-4 ring-[#1E5A7A]/10 w-80' : 'border-gray-200 w-64'}`}
+                            />
+
+                            {searchQuery && (
+                                <button onClick={() => { setSearchQuery(''); setIsSearchOpen(false); }} className="absolute right-3.5 top-2.5 text-gray-400 hover:text-red-500 transition-colors">
+                                    <X size={16} />
+                                </button>
+                            )}
+
+                            {/* 🌟 Search Results Dropdown 🌟 */}
+                            {isSearchOpen && searchQuery.length > 0 && (
+                                <div className="absolute top-full right-0 mt-2 w-80 bg-white border border-gray-100 rounded-2xl shadow-xl overflow-hidden z-50 max-h-[400px] overflow-y-auto animate-fade-in-up">
+                                    {filteredProjects.length === 0 && filteredTasks.length === 0 ? (
+                                        <div className="p-6 text-center text-sm text-gray-500 font-medium">No results found for "{searchQuery}"</div>
+                                    ) : (
+                                        <div className="py-2">
+                                            {/* Projects Section */}
+                                            {filteredProjects.length > 0 && (
+                                                <div className="mb-2">
+                                                    <div className="px-4 py-1.5 text-[10px] font-black text-gray-400 uppercase tracking-wider bg-gray-50/50">Projects</div>
+                                                    {filteredProjects.map(p => (
+                                                        <button
+                                                            key={p.id}
+                                                            onClick={() => { router.push(`/pmp/projects/${p.id}`); setIsSearchOpen(false); setSearchQuery(''); }}
+                                                            className="w-full text-left px-4 py-2.5 hover:bg-[#1E5A7A]/5 flex items-center gap-3 transition-colors group"
+                                                        >
+                                                            <div className="w-8 h-8 rounded-lg bg-[#1E5A7A]/10 flex items-center justify-center text-[#1E5A7A] group-hover:bg-[#1E5A7A] group-hover:text-white transition-colors">
+                                                                <FolderIcon size={14} strokeWidth={2.5} />
+                                                            </div>
+                                                            <span className="text-sm font-bold text-[#1F2937] truncate">{p.name}</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            {/* Tasks Section */}
+                                            {filteredTasks.length > 0 && (
+                                                <div>
+                                                    <div className="px-4 py-1.5 text-[10px] font-black text-gray-400 uppercase tracking-wider bg-gray-50/50">Tasks</div>
+                                                    {filteredTasks.map(t => {
+                                                        const parentProject = projects.find(p => p.id === t.project_id);
+                                                        return (
+                                                            <button
+                                                                key={t.id}
+                                                                onClick={() => { if (t.project_id) router.push(`/pmp/projects/${t.project_id}`); setIsSearchOpen(false); setSearchQuery(''); }}
+                                                                className="w-full text-left px-4 py-2.5 hover:bg-[#1E5A7A]/5 flex items-start gap-3 transition-colors group"
+                                                            >
+                                                                <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500 mt-0.5 group-hover:bg-[#1E5A7A]/10 group-hover:text-[#1E5A7A] transition-colors shrink-0">
+                                                                    <CheckSquare size={14} strokeWidth={2.5} />
+                                                                </div>
+                                                                <div className="overflow-hidden">
+                                                                    <div className="text-sm font-bold text-[#1F2937] truncate">{t.title}</div>
+                                                                    {parentProject && <div className="text-[11px] font-medium text-gray-500 truncate mt-0.5">in {parentProject.name}</div>}
+                                                                </div>
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
+
                     </div>
                 </header>
                 <div className="flex-1 overflow-auto p-8 scroll-smooth">
@@ -200,7 +320,7 @@ export default function PmpLayout({ children }: { children: React.ReactNode }) {
 
             {/* Delete Project Confirm */}
             {projectToDelete && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                     <div className="fixed inset-0 bg-[#1F2937]/40 backdrop-blur-sm transition-opacity" onClick={() => setProjectToDelete(null)} />
                     <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 animate-fade-in-up z-10 text-center">
                         <div className="w-16 h-16 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm border border-red-100"><Trash2 size={32} strokeWidth={2.5} /></div>
@@ -218,7 +338,7 @@ export default function PmpLayout({ children }: { children: React.ReactNode }) {
 
             {/* Delete Space Confirm */}
             {spaceToDelete && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                     <div className="fixed inset-0 bg-[#1F2937]/40 backdrop-blur-sm transition-opacity" onClick={() => setSpaceToDelete(null)} />
                     <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 animate-fade-in-up z-10 text-center">
                         <div className="w-16 h-16 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm border border-red-100"><Trash2 size={32} strokeWidth={2.5} /></div>
@@ -236,7 +356,7 @@ export default function PmpLayout({ children }: { children: React.ReactNode }) {
 
             {/* Delete Folder Confirm */}
             {folderToDelete && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                     <div className="fixed inset-0 bg-[#1F2937]/40 backdrop-blur-sm transition-opacity" onClick={() => setFolderToDelete(null)} />
                     <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 animate-fade-in-up z-10 text-center">
                         <div className="w-16 h-16 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm border border-red-100"><Trash2 size={32} strokeWidth={2.5} /></div>
