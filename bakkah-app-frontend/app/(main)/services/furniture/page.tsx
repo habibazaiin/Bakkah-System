@@ -28,15 +28,10 @@ export default async function FurnitureServicePage() {
                     </p>
 
                     <div className="flex justify-center gap-4 flex-wrap mt-8">
-                        <a
-                            href={`tel:${contactInfo.phone}`}
-                            className="px-6 py-3 bg-[#B03052] hover:bg-[#8C233E] text-white font-bold rounded-xl shadow-lg transition-transform transform hover:-translate-y-1 flex items-center gap-2"
-                        >
-                            <Phone size={18} /> Call Us
-                        </a>
+
 
                         <a
-                            href="https://instagram.com/bakkahsystems"
+                            href="https://www.instagram.com/bakkah_systems?rpxt=MTZ5YXp6MXcyOWYxcg=="
                             target="_blank"
                             rel="noreferrer"
                             className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl border border-white/20 backdrop-blur-md transition-transform transform hover:-translate-y-1 flex items-center gap-2"

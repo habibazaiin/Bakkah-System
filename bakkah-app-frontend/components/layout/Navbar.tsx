@@ -17,15 +17,9 @@ export default function Navbar() {
   useEffect(() => {
     const fetchUserAndRole = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-
       if (session?.user) {
         setUser(session.user);
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', session.user.id)
-          .single();
-
+        const { data: profile } = await supabase.from('profiles').select('role').eq('id', session.user.id).single();
         setIsAdmin(profile?.role === 'admin');
       } else {
         setUser(null);
@@ -39,11 +33,7 @@ export default function Navbar() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
         setUser(session.user);
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', session.user.id)
-          .single();
+        const { data: profile } = await supabase.from('profiles').select('role').eq('id', session.user.id).single();
         setIsAdmin(profile?.role === 'admin');
       } else {
         setUser(null);
@@ -66,10 +56,8 @@ export default function Navbar() {
   return (
     <>
       <header className="sticky top-0 z-40 w-full bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-sm transition-all duration-300">
-        {/* شيلنا الـ max-w-7xl وخليناها w-full عشان تاخد الشاشة كلها من الطرف للطرف */}
         <div className="w-full px-6 sm:px-10 lg:px-16 h-20 flex items-center justify-between">
 
-          {/* الجزء الأيسر: اللوجو والقائمة (واخدين flex-1 عشان يزقوا للطرف) */}
           <div className="flex-1 flex items-center justify-start gap-5">
             <button
               onClick={() => setIsSidebarOpen(true)}
@@ -82,7 +70,6 @@ export default function Navbar() {
             </Link>
           </div>
 
-          {/* الجزء الأوسط: اللينكات (متمركزة في النص بالظبط) */}
           <nav className="hidden lg:flex items-center justify-center gap-10">
             <Link href={SITE_DATA.links.home} className="text-sm font-bold text-[#1E5A7A] hover:text-[#B03052] transition-colors">Home</Link>
             <Link href={SITE_DATA.links.about} className="text-sm font-bold text-gray-600 hover:text-[#1E5A7A] transition-colors">About Us</Link>
@@ -90,17 +77,12 @@ export default function Navbar() {
             <Link href={SITE_DATA.links.contact} className="text-sm font-bold text-gray-600 hover:text-[#1E5A7A] transition-colors">Contact</Link>
           </nav>
 
-          {/* الجزء الأيمن: المستخدم والأزرار (واخدين flex-1 عشان يزقوا للطرف التاني) */}
           <div className="flex-1 flex items-center justify-end gap-4">
             {!isLoading && (
               user ? (
                 <div className="flex items-center gap-4 animate-fade-in-up">
-
                   {isAdmin && (
-                    <Link
-                      href="/dashboard"
-                      className="hidden lg:flex px-3.5 py-2 text-xs font-black uppercase tracking-wider text-[#B03052] bg-red-50 hover:bg-red-100 rounded-lg transition-colors items-center gap-1.5 border border-red-100/50"
-                    >
+                    <Link href="/dashboard" className="hidden lg:flex px-3.5 py-2 text-xs font-black uppercase tracking-wider text-[#B03052] bg-red-50 hover:bg-red-100 rounded-lg transition-colors items-center gap-1.5 border border-red-100/50">
                       ⚙️ Dashboard
                     </Link>
                   )}
@@ -124,8 +106,13 @@ export default function Navbar() {
                           <p className="text-xs font-bold text-[#1E5A7A] truncate">{user.email}</p>
                         </div>
 
+                        {/* 🌟 لينك البروفايل */}
+                        <Link href="/profile" className="block w-full text-left px-3 py-2 text-sm font-bold text-gray-600 hover:text-[#1E5A7A] hover:bg-blue-50 rounded-lg transition-colors mb-1">
+                          👤 My Profile
+                        </Link>
+
                         {isAdmin && (
-                          <Link href="/dashboard/contacts" className="block w-full text-left px-3 py-2 text-sm font-bold text-[#B03052] hover:bg-red-50 rounded-lg transition-colors mb-1 lg:hidden">
+                          <Link href="/dashboard" className="block w-full text-left px-3 py-2 text-sm font-bold text-[#B03052] hover:bg-red-50 rounded-lg transition-colors mb-1 lg:hidden">
                             ⚙️ Dashboard
                           </Link>
                         )}

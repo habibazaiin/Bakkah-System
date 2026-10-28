@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Users, Code, Cpu, Home, ShieldCheck, Loader2, Image as ImageIcon } from 'lucide-react';
+import { Users, Code, Cpu, Home, ShieldCheck, Loader2, Image as ImageIcon, LayoutDashboard } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 export default function AdminDashboardLayout({ children }: { children: React.ReactNode }) {
@@ -39,7 +39,8 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
     if (!isAuthorized) return null;
 
     const navItems = [
-        { name: 'Users Management', href: '/dashboard', icon: <Users size={20} /> },
+        { name: 'Overview', href: '/dashboard', icon: <LayoutDashboard size={20} /> },
+        { name: 'Users Management', href: '/dashboard/users', icon: <Users size={20} /> },
         { name: 'Fullstack Contacts', href: '/dashboard/contacts/fullstack', icon: <Code size={20} /> },
         { name: 'AI Contacts', href: '/dashboard/contacts/ai', icon: <Cpu size={20} /> },
         { name: 'Furniture Portfolio', href: '/dashboard/furniture', icon: <ImageIcon size={20} /> },

@@ -1,4 +1,3 @@
-// src/components/layout/Sidebar.tsx
 'use client';
 
 import Image from 'next/image';
@@ -8,8 +7,8 @@ import { SITE_DATA } from '@/constants/site';
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
-  user: any; // هنستقبل اليوزر هنا
-  onLogout: () => void; // دالة تسجيل الخروج
+  user: any;
+  onLogout: () => void;
 }
 
 export default function Sidebar({ isOpen, onClose, user, onLogout }: SidebarProps) {
@@ -27,19 +26,20 @@ export default function Sidebar({ isOpen, onClose, user, onLogout }: SidebarProp
           </button>
         </div>
 
-        {/* عرض بيانات اليوزر لو عامل تسجيل دخول */}
+        {/* 🌟 حولنا بيانات اليوزر للينك بيودي على البروفايل */}
         {user && (
-          <div className="p-6 border-b border-gray-100 bg-gradient-to-br from-[#1E5A7A]/5 to-transparent">
+          <Link href="/profile" onClick={onClose} className="block p-6 border-b border-gray-100 bg-gradient-to-br from-[#1E5A7A]/5 to-transparent hover:from-[#1E5A7A]/10 transition-colors group">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-gradient-to-tr from-[#1E5A7A] to-[#2A6B8F] text-white rounded-full flex items-center justify-center text-lg font-black shadow-md">
+              <div className="w-12 h-12 bg-gradient-to-tr from-[#1E5A7A] to-[#2A6B8F] text-white rounded-full flex items-center justify-center text-lg font-black shadow-md group-hover:scale-105 transition-transform">
                 {user.user_metadata?.username?.charAt(0).toUpperCase() || 'U'}
               </div>
-              <div>
-                <p className="text-sm font-bold text-[#1F2937]">{user.user_metadata?.username || 'Bakkah User'}</p>
+              <div className="flex-1">
+                <p className="text-sm font-bold text-[#1F2937] group-hover:text-[#1E5A7A] transition-colors">{user.user_metadata?.username || 'Bakkah User'}</p>
                 <p className="text-xs text-gray-500 font-medium truncate max-w-[180px]">{user.email}</p>
+                <p className="text-[10px] text-[#1E5A7A] font-bold mt-1 uppercase tracking-wider">View Profile →</p>
               </div>
             </div>
-          </div>
+          </Link>
         )}
 
         <div className="p-6 space-y-6 flex-1 overflow-y-auto">
@@ -68,9 +68,16 @@ export default function Sidebar({ isOpen, onClose, user, onLogout }: SidebarProp
               <li><Link href={SITE_DATA.links.ai} onClick={onClose} className="block px-3 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-50 rounded-xl hover:text-[#1E5A7A] transition-colors">🤖 AI Support</Link></li>
             </ul>
           </div>
+
+          {/* 🌟 ضفنا قسم الـ Furniture هنا */}
+          <div>
+            <h3 className="text-xs font-bold text-[#B03052] uppercase tracking-wider mb-3 px-2">Design & Decor</h3>
+            <ul className="space-y-1">
+              <li><Link href="/services/furniture" onClick={onClose} className="block px-3 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-50 rounded-xl hover:text-[#1E5A7A] transition-colors">🛋️ Bakkah Furniture</Link></li>
+            </ul>
+          </div>
         </div>
 
-        {/* زرار تسجيل الخروج لو اليوزر موجود */}
         {user ? (
           <div className="p-6 border-t border-gray-100 bg-[#F8FAFC]">
             <button onClick={() => { onLogout(); onClose(); }} className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold text-[#B03052] bg-red-50 hover:bg-[#B03052] hover:text-white rounded-xl transition-all duration-300">
