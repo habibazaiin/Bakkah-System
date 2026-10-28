@@ -1,0 +1,27 @@
+from fastapi import APIRouter, Depends
+from app.modules.pmp.schemas.project import ProjectCreate, ProjectResponse
+from app.modules.pmp.services.project_service import ProjectService
+from app.api.dependencies import get_current_user
+from typing import List
+from app.modules.pmp.schemas.project import ProjectUpdate
+
+router = APIRouter(prefix="/projects", tags=["Projects"])
+
+@router.post("/", response_model=ProjectResponse)
+async def create_project(project: ProjectCreate, current_user = Depends(get_current_user)):
+    return ProjectService.create_project(project, str(current_user.id))
+
+# ضيفي ده تحت الـ POST اللي موجود
+@router.get("/", response_model=List[ProjectResponse])
+async def get_projects(current_user = Depends(get_current_user)):
+    return ProjectService.get_projects(str(current_user.id))
+
+@router.patch("/{project_id}")
+async def update_project(project_id: str, project: ProjectUpdate, current_user = Depends(get_current_user)):
+    update_data = {k: v for k, v in project.model_dump().items() if v is not None}
+    return ProjectService.update_project(project_id, update_data)
+
+@router.delete("/{project_id}")
+async def delete_project(project_id: str, current_user = Depends(get_current_user)):
+    ProjectService.delete_project(project_id)
+    return {"message": "Project deleted successfully"}

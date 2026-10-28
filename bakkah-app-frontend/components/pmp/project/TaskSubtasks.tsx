@@ -1,20 +1,21 @@
 'use client';
 
 import React, { useState } from 'react';
-import { CheckSquare, Plus, Loader2, Circle, CheckCircle2 } from 'lucide-react';
+import { CheckSquare, Plus, Loader2, Circle, CheckCircle2, Trash2 } from 'lucide-react';
 import { PmpService } from '@/services/pmp.service';
 import { Task } from '@/types/pmp.types';
 
 interface Props {
     task: Task;
     subtasks: Task[];
-    onSubtaskCreated: () => void;
+    onSubtaskCreated: () => void; // دي بتعمل Refresh للداتا في الأب (TaskDetailsSidebar)
     onUpdateSubtask: (subtaskId: string, status: string) => void;
 }
 
 export default function TaskSubtasks({ task, subtasks, onSubtaskCreated, onUpdateSubtask }: Props) {
     const [title, setTitle] = useState('');
     const [isCreating, setIsCreating] = useState(false);
+    const [deletingId, setDeletingId] = useState<string | null>(null);
 
     const handleCreateSubtask = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -30,7 +31,7 @@ export default function TaskSubtasks({ task, subtasks, onSubtaskCreated, onUpdat
                 priority: 'Medium'
             });
             setTitle('');
-            onSubtaskCreated();
+            onSubtaskCreated(); // تحديث القائمة
         } catch (error) {
             console.error("Error creating subtask:", error);
         } finally {
@@ -42,9 +43,22 @@ export default function TaskSubtasks({ task, subtasks, onSubtaskCreated, onUpdat
         if (!newTitle.trim()) return;
         try {
             await PmpService.updateTask(subtaskId, { title: newTitle.trim() });
-            onSubtaskCreated(); // نستدعيها لعمل ريفريش للواجهة
+            onSubtaskCreated();
         } catch (error) {
             console.error("Error renaming subtask:", error);
+        }
+    };
+
+    // 🌟 دالة حذف المهمة الفرعية 🌟
+    const handleDeleteSubtask = async (subtaskId: string) => {
+        setDeletingId(subtaskId);
+        try {
+            await PmpService.deleteTask(subtaskId);
+            onSubtaskCreated(); // بننادي دالة الريفريش عشان الشاشة تتحدث
+        } catch (error) {
+            console.error("Error deleting subtask:", error);
+        } finally {
+            setDeletingId(null);
         }
     };
 
@@ -80,7 +94,6 @@ export default function TaskSubtasks({ task, subtasks, onSubtaskCreated, onUpdat
                                     {isDone ? <CheckCircle2 size={16} className="text-green-600" /> : <Circle size={16} />}
                                 </button>
 
-                                {/* 🌟 حقل تعديل اسم المهام الفرعية 🌟 */}
                                 <input
                                     type="text"
                                     defaultValue={sub.title}
@@ -97,6 +110,16 @@ export default function TaskSubtasks({ task, subtasks, onSubtaskCreated, onUpdat
                                     className={`w-full bg-transparent border-none focus:ring-0 p-0 text-sm font-bold truncate outline-none ${isDone ? 'line-through text-gray-400' : 'text-[#1F2937] focus:text-[#1E5A7A]'}`}
                                 />
                             </div>
+
+                            {/* 🌟 زر الحذف يظهر عند الـ Hover 🌟 */}
+                            <button
+                                onClick={() => handleDeleteSubtask(sub.id)}
+                                disabled={deletingId === sub.id}
+                                className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-400 hover:text-red-500 hover:bg-white rounded-lg transition-all shrink-0 ml-2"
+                                title="Delete subtask"
+                            >
+                                {deletingId === sub.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                            </button>
                         </div>
                     );
                 })}

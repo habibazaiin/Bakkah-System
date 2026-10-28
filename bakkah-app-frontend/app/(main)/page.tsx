@@ -1,13 +1,38 @@
-// src/app/(main)/page.tsx
+'use client';
+
+import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import ContactSection from '@/components/home/ContactSection';
 import ServiceCard from '@/components/home/ServiceCard';
 import { SERVICES_LIST } from '@/constants/site';
+import { supabase } from '@/lib/supabase';
 
 export default function HomePage() {
   const featuredService = SERVICES_LIST.find((s) => s.isFeatured);
   const gridServices = SERVICES_LIST.filter((s) => !s.isFeatured);
+
+  // 🌟 State عشان نحفظ فيها حالة تسجيل الدخول
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    // 1. نفحص إذا كان اليوزر مسجل دخول أول ما الصفحة تفتح
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsAuthenticated(!!session);
+    };
+
+    checkAuth();
+
+    // 2. نراقب أي تغيير (لو عمل Sign in أو Sign out وهو فاتح الصفحة)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(!!session);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   return (
     <div className="bg-[#F8FAFC] text-gray-800 font-sans selection:bg-[#1E5A7A] selection:text-white">
@@ -36,12 +61,16 @@ export default function HomePage() {
             >
               Explore Services
             </a>
-            <Link
-              href="/signup"
-              className="px-8 py-4 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl border border-white/20 backdrop-blur-md transition-all transform hover:-translate-y-1"
-            >
-              Get Started
-            </Link>
+
+            {/* 🌟 الزرار ده هيظهر بس لو اليوزر مش عامل تسجيل دخول */}
+            {!isAuthenticated && (
+              <Link
+                href="/signup"
+                className="px-8 py-4 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl border border-white/20 backdrop-blur-md transition-all transform hover:-translate-y-1"
+              >
+                Get Started
+              </Link>
+            )}
           </div>
         </div>
       </section>

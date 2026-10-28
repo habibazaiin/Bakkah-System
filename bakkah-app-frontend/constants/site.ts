@@ -2,9 +2,8 @@
 export const SITE_DATA = {
     name: 'Bakkah Systems',
     contact: {
-        email: 'info@bakkah.com',
-        techEmail: 'tech@bakkah.com',
-        phone: '+20 100 000 0000',
+        email: 'info@bakkah-systems.com',
+        phone: '+20 11 2237 7304',
         location: 'Cairo, Egypt',
     },
     links: {
@@ -77,4 +76,11 @@ export const SERVICES_LIST: ServiceItem[] = [
         icon: '🤖',
         href: SITE_DATA.links.ai,
     },
+
+
 ];
+
+export const BASE_API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api';
+
+// رابط الـ PMP المخصص
+export const PMP_API_URL = `${BASE_API_URL}/pmp`;

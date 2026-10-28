@@ -1,7 +1,8 @@
 import { supabase } from '@/lib/supabase';
 import { Space, Project, Task, Comment, Attachment, Activity, Folder, Invitation, SpaceMember, AppNotification } from '@/types/pmp.types';
+import { PMP_API_URL } from '@/constants/site';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/pmp';
+const API_URL = PMP_API_URL;
 
 export const PmpService = {
     async getHeaders(): Promise<Record<string, string>> {

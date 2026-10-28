@@ -1,7 +1,7 @@
 from apscheduler.schedulers.background import BackgroundScheduler
 from datetime import datetime, timedelta
 from app.core.database import supabase
-from app.services.email_service import send_real_email  # استيراد خدمة الإيميل بتاعتك
+from app.modules.pmp.services.email_service import send_real_email  # استيراد خدمة الإيميل بتاعتك
 import asyncio
 import inspect
 
