@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Users, Loader2, Shield, ShieldOff, Trash2, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
+import { Users, Loader2, Shield, ShieldOff, Trash2, CheckCircle2, XCircle, AlertTriangle, Search } from 'lucide-react';
 
 export default function UsersManagementPage() {
     const [users, setUsers] = useState<any[]>([]);
@@ -15,6 +15,14 @@ export default function UsersManagementPage() {
     const [userToDelete, setUserToDelete] = useState<any | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
     const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+    const [searchQuery, setSearchQuery] = useState('');
+
+    const filteredUsers = users.filter(user => 
+        (user.full_name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+        (user.email?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+        (user.role?.toLowerCase() || '').includes(searchQuery.toLowerCase())
+    );
 
     const fetchUsers = async () => {
         const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
@@ -113,12 +121,28 @@ export default function UsersManagementPage() {
                 </div>
             )}
 
-            <div className="mb-8 border-b pb-6">
-                <h2 className="text-3xl font-black text-[#1F2937] flex items-center gap-3">
-                    <Users className="text-[#1E5A7A]" size={32} />
-                    Users Management
-                </h2>
-                <p className="text-gray-500 mt-2 font-medium">View and manage all users, update their roles, or remove accounts.</p>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 border-b pb-6 gap-4">
+                <div>
+                    <h2 className="text-3xl font-black text-[#1F2937] flex items-center gap-3">
+                        <Users className="text-[#1E5A7A]" size={32} />
+                        Users Management
+                    </h2>
+                    <p className="text-gray-500 mt-2 font-medium">View and manage all users, update their roles, or remove accounts.</p>
+                </div>
+                
+                {/* 🌟 مربع البحث */}
+                <div className="relative w-full md:w-72">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Search className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <input
+                        type="text"
+                        placeholder="Search users..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl outline-none focus:border-[#1E5A7A] focus:ring-2 focus:ring-[#1E5A7A]/10 transition-all font-medium text-sm"
+                    />
+                </div>
             </div>
 
             <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
@@ -132,7 +156,7 @@ export default function UsersManagementPage() {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                        {users.map((user) => (
+                        {filteredUsers.map((user) => (
                             <tr key={user.id} className="hover:bg-gray-50 transition-colors group">
                                 <td className="px-6 py-4">
                                     <div className="font-bold text-[#1F2937]">{user.full_name || 'N/A'}</div>
@@ -169,7 +193,7 @@ export default function UsersManagementPage() {
                                 </td>
                             </tr>
                         ))}
-                        {users.length === 0 && (
+                        {filteredUsers.length === 0 && (
                             <tr>
                                 <td colSpan={4} className="px-6 py-10 text-center text-gray-500 font-medium">No users found.</td>
                             </tr>

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { FurnitureService, FurnitureItem } from '@/services/furniture.service';
-import { Loader2, Plus, Trash2, Upload, CheckCircle2, XCircle, AlertTriangle, Pencil, Edit2 } from 'lucide-react';
+import { Loader2, Plus, Trash2, Upload, CheckCircle2, XCircle, AlertTriangle, Pencil, Edit2, Search } from 'lucide-react';
 
 export default function AdminFurniturePage() {
     const [items, setItems] = useState<FurnitureItem[]>([]);
@@ -23,6 +23,14 @@ export default function AdminFurniturePage() {
     const [toast, setToast] = useState<{ show: boolean, message: string, type: 'success' | 'error' }>({ show: false, message: '', type: 'success' });
     const [itemToDelete, setItemToDelete] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
+
+
+    const [searchQuery, setSearchQuery] = useState('');
+
+    const filteredItems = items.filter(item =>
+        item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.description.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
     useEffect(() => {
         const loadData = async () => {
@@ -258,9 +266,26 @@ export default function AdminFurniturePage() {
                 </button>
             </form>
 
+            {/* 🌟 هيدر قسم العرض ومربع البحث */}
+            <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+                <h3 className="text-2xl font-black text-[#1F2937]">Portfolio Items</h3>
+                <div className="relative w-full sm:w-72">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Search className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <input
+                        type="text"
+                        placeholder="Search furniture..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl outline-none focus:border-[#1E5A7A] focus:ring-2 focus:ring-[#1E5A7A]/10 transition-all font-medium text-sm"
+                    />
+                </div>
+            </div>
+
             {/* عرض العناصر المضافة */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {items.map(item => (
+                {filteredItems.map(item => (
                     <div key={item.id} className="bg-white rounded-2xl border border-gray-100 p-4 flex gap-4 items-center shadow-sm hover:shadow-md transition-shadow group">
                         <img src={item.image_url} alt={item.title} className="w-24 h-24 object-cover rounded-xl bg-gray-100 border border-gray-100" />
                         <div className="flex-1 overflow-hidden">
